@@ -1,0 +1,10 @@
+coverage
+build
+dist
+node_modules
+stats.json
+.DS_Store
+.idea
+.vscode
+*.log
+yarn.lock
