@@ -73,6 +73,12 @@ describe('Searchable', () => {
     expect(model.searchableAs()).toBe('stubs')
   })
 
+  it('searchableAs returns model table', () => {
+    const model = new ModelStub()
+    ModelStub._bootIfNotBooted()
+    expect(model.searchableAs()).toBe('stubs')
+  })
+
   it('searchableAs returns prefixed model table', () => {
     const model = new ModelStub()
     ModelStub._bootIfNotBooted()
@@ -122,6 +128,13 @@ describe('Searchable', () => {
     expect(engineMock.update).toHaveBeenCalledWith(collection)
   })
 
+  it('makeSearchable just returns if collection size is zero', () => {
+    const collection = new VanillaSerializer([])
+    collection.first = jest.fn()
+    ioc.use('Searchable').constructor.makeSearchable(collection)
+    expect(collection.first).not.toHaveBeenCalled()
+  })
+
   it('makeUnsearchable calls engine update method to remove models from index', () => {
     const engineMock = jest.fn()
     engineMock.delete = jest.fn()
@@ -133,6 +146,22 @@ describe('Searchable', () => {
     ioc.use('Searchable').constructor.makeUnsearchable(collection)
 
     expect(engineMock.delete).toHaveBeenCalledWith(collection)
+  })
+
+  it('makeUnsearchable just returns if collection size is zero', () => {
+    const collection = new VanillaSerializer([])
+    collection.first = jest.fn()
+    ioc.use('Searchable').constructor.makeUnsearchable(collection)
+    expect(collection.first).not.toHaveBeenCalled()
+  })
+
+  it('searchableUsing returns engine from Scout', () => {
+    const engineMock = jest.fn()
+    const scoutMock = jest.fn()
+    scoutMock.engine = () => engineMock
+    ioc.fake('Scout', () => scoutMock)
+    const model = new ModelStub()
+    expect(model.searchableUsing()).toBe(engineMock)
   })
 
   it.skip('unsearchable removes model from the index', () => {

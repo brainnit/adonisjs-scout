@@ -28,26 +28,6 @@ class Searchable {
     Searchable.bootSearchable(Model, options)
 
     /**
-     * Hack into the serializer to inject `searchable` and `unsearchable`
-     * methods to allow affecting a collection of models at once.
-     */
-    Model.resolveSerializer = function () {
-      const Serializer = typeof (this.Serializer) === 'string'
-        ? ioc.use(this.Serializer)
-        : this.Serializer
-
-      Serializer.prototype.searchable = function () {
-        Searchable.makeSearchable(this)
-      }
-
-      Serializer.prototype.unsearchable = function () {
-        Searchable.makeUnsearchable(this)
-      }
-
-      return Serializer
-    }
-
-    /**
      * Perform a search against the model's indexed data.
      *
      * @method search
@@ -165,7 +145,13 @@ class Searchable {
       Searchable.registerObservers(Model)
     }
 
-    Searchable.registerSearchableMacros(Model)
+    /**
+     * Hack into the serializer to inject `searchable` and `unsearchable`
+     * methods to allow affecting a collection of models at once.
+     */
+    Model.resolveSerializer = function () {
+      return (Searchable.resolveSerializer.bind(this))()
+    }
   }
 
   /**
@@ -182,14 +168,29 @@ class Searchable {
   }
 
   /**
-   * Register the searchable query macros.
+   * Extend model Serializer adding `searchable` and `unsearchable` to his
+   * instance methods.
    *
-   * @param {Model} Model
+   * @instance
    *
-   * @return {void}
+   * @method resolveSerializer
+   *
+   * @return {Serializer}
    */
-  static registerSearchableMacros (Model) {
-    // add searchable|unsearchable to serializer
+  static resolveSerializer () {
+    const Serializer = typeof (this.Serializer) === 'string'
+      ? ioc.use(this.Serializer)
+      : this.Serializer
+
+    Serializer.prototype.searchable = function () {
+      Searchable.makeSearchable(this)
+    }
+
+    Serializer.prototype.unsearchable = function () {
+      Searchable.makeUnsearchable(this)
+    }
+
+    return Serializer
   }
 
   /**
