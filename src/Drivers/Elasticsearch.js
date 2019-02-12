@@ -2,6 +2,7 @@
 
 const AbstractDriver = require('./Abstract')
 const ElasticsearchClient = require('elasticsearch').Client
+const _ = require('lodash')
 
 class Elasticsearch extends AbstractDriver {
   /**
@@ -22,7 +23,7 @@ class Elasticsearch extends AbstractDriver {
   /**
    * Update the given model in the index.
    *
-   * @throws
+   * @async
    *
    * @param {Collection|Model} model
    *
@@ -49,14 +50,39 @@ class Elasticsearch extends AbstractDriver {
     this.transporter.initIndex(model.searchableAs())
 
     /**
-     * Save serialized model to the search engine,
-     * using as UID the result from `model.getSearchableKey()`.
+     * Save serialized model to the search engine, using the result
+     * from `model.getSearchableKey()` as object id.
      */
     this.transporter.index(
       model.searchableAs(),
       model.getSearchableKey(),
       model.toSearchableJSON()
     )
+  }
+
+  /**
+   * Remove the given model from the index.
+   *
+   * @throws
+   *
+   * @param {Collection|Model} models
+   *
+   * @return {void}
+   */
+  delete (models) {
+    if (!models) {
+      return
+    }
+
+    const index = models.first().searchableAs()
+
+    this.transporter.initIndex(index)
+
+    const objectIds = _.map(models.rows, model => {
+      return model.getSearchableKey()
+    })
+
+    this.transporter.deleteBulk(index, objectIds)
   }
 
   /**
@@ -71,7 +97,7 @@ class Elasticsearch extends AbstractDriver {
   flush (model) {
     const index = model.searchableAs()
     this.transporter.initIndex(index)
-    this.transporter.emptyIndex(index)
+    this.transporter.flushIndex(index)
   }
 }
 
@@ -81,6 +107,13 @@ class ElasticsearchTransporter {
     this.Client = this.makeClient()
   }
 
+  /**
+   * Make client instance to work with.
+   *
+   * @param {ElasticsearchClient} ClientClass Client sdk
+   *
+   * @return {ElasticsearchClient}
+   */
   makeClient (ClientClass = ElasticsearchClient) {
     const { connection, options } = this.config
 
@@ -98,78 +131,85 @@ class ElasticsearchTransporter {
   /**
    * Create or updates the given search index.
    *
-   * @link https://www.elastic.co/guide/en/elasticsearch/reference/6.4/indices-create-index.html
+   * @async
    *
    * @throws
    *
    * @param {String} name Index name
    * @param {Object} params Extra
    *
-   * @return {Boolean}
+   * @return {Promise}
    */
   async initIndex (name, params = {}) {
     const exists = await this.Client.indices.exists({ index: name })
     const method = exists ? '_updateIndex' : '_createIndex'
-    const response = await this[method](name, params)
-    return response
+
+    return this[method](name, params)
   }
 
   /**
    * Creates the given search index.
+   *
+   * @async
    *
    * @param {String} name Index name
    * @param {Object} params Extra
    *
    * @return {Boolean}
    */
-  async _createIndex (name, params = {}) {
+  _createIndex (name, params = {}) {
     const requestPayload = {
       index: name,
       body: { ...params }
     }
-    const response = await this.Client.indices.create(requestPayload)
-    return !!response.acknowledged
+
+    return new Promise((resolve, reject) => {
+      this.Client.indices.create(requestPayload, (error, result) => {
+        if (error) {
+          reject(error)
+        } else {
+          resolve(result)
+        }
+      })
+    })
   }
 
   /**
-   * Creates the given search index.
+   * Updates the given search index.
    *
    * @param {String} name Index name
    * @param {Object} params Extra
    *
    * @return {Boolean}
    */
-  async _updateIndex (name, params = {}) {
+  _updateIndex (name, params = {}) {
     const requestPayload = {
       index: name,
       body: { ...params }
     }
-    const response = await this.Client.indices.upgrade(requestPayload)
-    return !!response.acknowledged
+
+    return new Promise((resolve, reject) => {
+      this.Client.indices.upgrade(requestPayload, (error, result) => {
+        if (error) {
+          reject(error)
+        } else {
+          resolve(result)
+        }
+      })
+    })
   }
 
   /**
-   * Flush entire index removing all objects.
+   * Add an object to Elasticsearch index.
    *
-   * @link https://www.elastic.co/guide/en/elasticsearch/reference/6.4/indices-flush.html
+   * @async
    *
-   * @throws
+   * @param {String} index Index name
+   * @param {String} objectId Object uid
+   * @param {Object} objectData Object data
    *
-   * @param {String} name Index name
-   *
-   * @return {Boolean}
+   * @return {Promise}
    */
-  async flushIndex (name) {
-    const requestPayload = {
-      index: name,
-      force: true,
-      waitIfOngoing: true
-    }
-    const response = await this.Client.indices.flush(requestPayload)
-    console.log(response)
-    return !!response
-  }
-
   index (index, objectId, objectData) {
     const requestPayload = {
       index,
@@ -177,19 +217,75 @@ class ElasticsearchTransporter {
       id: objectId,
       ...objectData
     }
-    const response = this.Client.index(requestPayload)
-    return !!response
+
+    return new Promise((resolve, reject) => {
+      this.Client.index(requestPayload, (error, result) => {
+        if (error) {
+          reject(error)
+        } else {
+          resolve(result)
+        }
+      })
+    })
   }
 
-  delete (index, objectId) {
+  /**
+   * Remove objects from the index.
+   *
+   * @async
+   *
+   * @throws
+   *
+   * @param {String} index Index name
+   * @param {Array} objectIds Object Ids to delete
+   *
+   * @return {Promise}
+   */
+  deleteBulk (index, objectIds) {
+    const bodyActions = objectIds.map(objectId => {
+      return {
+        delete: { _index: index, _type: '_doc', _id: objectId }
+      }
+    })
+
+    return new Promise((resolve, reject) => {
+      this.Client.bulk({ body: bodyActions }, (error, result) => {
+        if (error) {
+          reject(error)
+        } else {
+          resolve(result)
+        }
+      })
+    })
+  }
+
+  /**
+   * Flush entire index removing all objects.
+   *
+   * @async
+   *
+   * @throws
+   *
+   * @param {String} name Index name
+   *
+   * @return {Promise}
+   */
+  flushIndex (name) {
     const requestPayload = {
-      index,
-      type: '_doc',
-      id: objectId
+      index: name,
+      force: true,
+      waitIfOngoing: true
     }
-    const response = this.Client.delete(requestPayload)
-    console.log(response)
-    return !!response
+
+    return new Promise((resolve, reject) => {
+      this.Client.indices.flush(requestPayload, (error, result) => {
+        if (error) {
+          reject(error)
+        } else {
+          resolve(result)
+        }
+      })
+    })
   }
 }
 
