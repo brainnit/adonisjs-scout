@@ -14,7 +14,7 @@ class Elasticsearch extends AbstractDriver {
    *
    * @return {void}
    */
-  setConfig (config) {
+  setConfig (config = {}) {
     this.config = config
     this.transporter = new ElasticsearchTransporter(this.config)
   }
