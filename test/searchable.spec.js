@@ -3,6 +3,7 @@
 require('@adonisjs/lucid/lib/iocResolver').setFold(require('@adonisjs/fold'))
 const Model = require('@adonisjs/lucid/src/Lucid/Model')
 const DatabaseManager = require('@adonisjs/lucid/src/Database/Manager')
+const VanillaSerializer = require('@adonisjs/lucid/src/Lucid/Serializers/Vanilla')
 const { ioc } = require('@adonisjs/fold')
 const { Config, Env, setupResolver } = require('@adonisjs/sink')
 const Builder = require('../src/Builder')
@@ -108,25 +109,30 @@ describe('Searchable', () => {
     expect(ModelStub.search()).toBeInstanceOf(Builder)
   })
 
-  it('searchable calls engine to add models to search index', async () => {
-    expect.assertions(1)
-    ModelStub._bootIfNotBooted()
+  it('makeSearchable calls engine update method to index models', () => {
+    const engineMock = jest.fn()
+    engineMock.update = jest.fn()
 
-    const collection = {}
-    collection.size = jest.fn(() => 1)
-    collection.first = jest.fn(() => {
-      return {
-        searchableUsing: jest.fn(() => {
-          return {
-            update: jest.fn(models => {
-              expect(models).toEqual(collection)
-            })
-          }
-        })
-      }
-    })
+    const modelMock = jest.fn()
+    modelMock.searchableUsing = jest.fn(() => engineMock)
 
+    const collection = new VanillaSerializer([modelMock])
     ioc.use('Searchable').constructor.makeSearchable(collection)
+
+    expect(engineMock.update).toHaveBeenCalledWith(collection)
+  })
+
+  it('makeUnsearchable calls engine update method to remove models from index', () => {
+    const engineMock = jest.fn()
+    engineMock.delete = jest.fn()
+
+    const modelMock = jest.fn()
+    modelMock.searchableUsing = jest.fn(() => engineMock)
+
+    const collection = new VanillaSerializer([ modelMock ])
+    ioc.use('Searchable').constructor.makeUnsearchable(collection)
+
+    expect(engineMock.delete).toHaveBeenCalledWith(collection)
   })
 
   it.skip('unsearchable removes model from the index', () => {
