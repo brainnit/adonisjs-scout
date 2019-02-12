@@ -20,6 +20,18 @@ class Scout {
   }
 
   /**
+   * Forward extension to Engine Manager.
+   *
+   * @param {String} name Driver name
+   * @param {Object} implementation Driver implementation
+   *
+   * @return {void}
+   */
+  extend (name, implementation) {
+    this.Manager.extend(name, implementation)
+  }
+
+  /**
    * Returns an instance of search engine. Also this method
    * will cache the instance for re-usability.
    *

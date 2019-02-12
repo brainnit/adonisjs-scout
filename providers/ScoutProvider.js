@@ -45,7 +45,7 @@ class ScoutProvider extends ServiceProvider {
    * @private
    */
   _registerEngineManager () {
-    this.app.manager('Adonis/Addons/Scout', require('../src/Manager'))
+    this.app.manager('Adonis/Addons/Scout', this.app.use('Scout'))
   }
 
   /**
