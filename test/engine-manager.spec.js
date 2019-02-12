@@ -1,6 +1,5 @@
 'use strict'
 
-const { Config } = require('@adonisjs/sink')
 const EngineManager = require('../src/Manager')
 const NullDriver = require('../src/Drivers').null
 

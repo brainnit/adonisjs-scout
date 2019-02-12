@@ -3,7 +3,6 @@
 require('@adonisjs/lucid/lib/iocResolver').setFold(require('@adonisjs/fold'))
 const Model = require('@adonisjs/lucid/src/Lucid/Model')
 const DatabaseManager = require('@adonisjs/lucid/src/Database/Manager')
-const VanillaSerializer = require('@adonisjs/lucid/src/Lucid/Serializers/Vanilla')
 const { ioc } = require('@adonisjs/fold')
 const { Config, Env, setupResolver } = require('@adonisjs/sink')
 const Builder = require('../src/Builder')

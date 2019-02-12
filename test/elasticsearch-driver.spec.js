@@ -1,7 +1,6 @@
 'use strict'
 
 require('dotenv').load()
-const elasticsearch = require('elasticsearch')
 const AbstractDriver = require('../src/Drivers/Abstract')
 const ElasticsearchDriver = require('../src/Drivers').elasticsearch
 

@@ -1,7 +1,5 @@
 'use strict'
 
-const Config = use('Config')
-
 /**
  * @typedef {import('@adonisjs/lucid/src/Lucid/Model')} Model
  */
