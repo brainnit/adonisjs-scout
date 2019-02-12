@@ -21,6 +21,15 @@ class AbstractDriver {
    */
   setConfig (config) {}
 
+  /**
+   * Update the given model in the index.
+   *
+   * @throws
+   *
+   * @param {Collection} models
+   *
+   * @return {void}
+   */
   update (models) {
     throw CE.LogicalException.notImplementedMethod('update')
   }
@@ -47,6 +56,10 @@ class AbstractDriver {
 
   getTotalCount (results) {
     throw CE.LogicalException.notImplementedMethod('getTotalCount')
+  }
+
+  flush (model) {
+    throw CE.LogicalException.notImplementedMethod('flush')
   }
 }
 

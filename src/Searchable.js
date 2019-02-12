@@ -1,7 +1,9 @@
 'use strict'
 
-const Config = use('Config')
+const { ioc } = require('@adonisjs/fold')
+const Config = ioc.use('Config')
 const ModelHook = require('./ModelHook')
+const Builder = require('./Builder')
 
 /**
  * @typedef {import('@adonisjs/lucid/src/Lucid/Model')} Model
@@ -26,6 +28,26 @@ class Searchable {
     Searchable.bootSearchable(Model, options)
 
     /**
+     * Hack into the serializer to inject `searchable` and `unsearchable`
+     * methods to allow affecting a collection of models at once.
+     */
+    Model.resolveSerializer = function () {
+      const Serializer = typeof (this.Serializer) === 'string'
+        ? ioc.use(this.Serializer)
+        : this.Serializer
+
+      Serializer.prototype.searchable = function () {
+        Searchable.makeSearchable(this)
+      }
+
+      Serializer.prototype.unsearchable = function () {
+        Searchable.makeUnsearchable(this)
+      }
+
+      return Serializer
+    }
+
+    /**
      * Perform a search against the model's indexed data.
      *
      * @method search
@@ -38,7 +60,7 @@ class Searchable {
      * @return {Builder}
      */
     Model.search = function (query = '', callback = null) {
-      return undefined
+      return new Builder(query, callback)
     }
 
     /**
@@ -71,6 +93,24 @@ class Searchable {
     }
 
     /**
+     * Get model unique key to index in the search engine.
+     *
+     * @return {String}
+     */
+    Model.prototype.getSearchableKey = function () {
+      return this.primaryKeyValue
+    }
+
+    /**
+     * Get the indexable data for the model in JSON format.
+     *
+     * @return {Object} JSON
+     */
+    Model.prototype.toSearchableJSON = function () {
+      return this.toJSON()
+    }
+
+    /**
      * Add the given model instance to the search index.
      *
      * @method searchable
@@ -80,7 +120,8 @@ class Searchable {
      * @return {void}
      */
     Model.prototype.searchable = function () {
-      // do the magic throught the collection
+      const Serializer = this.constructor.resolveSerializer()
+      new Serializer([ this ]).searchable()
     }
 
     /**
@@ -93,7 +134,17 @@ class Searchable {
      * @return {void}
      */
     Model.prototype.unsearchable = function () {
-      // do the magic throught the collection
+      const Serializer = this.constructor.resolveSerializer()
+      new Serializer([ this ]).unsearchable()
+    }
+
+    /**
+     * Get the search engine throught witch the model should be searchable.
+     *
+     * @return {Driver}
+     */
+    Model.prototype.searchableUsing = function () {
+      return ioc.use('Scout').engine()
     }
   }
 
@@ -114,7 +165,7 @@ class Searchable {
       Searchable.registerObservers(Model)
     }
 
-    Searchable.registerCollectionMacros(Model)
+    Searchable.registerSearchableMacros(Model)
   }
 
   /**
@@ -142,12 +193,33 @@ class Searchable {
   }
 
   /**
-   * Dispatch the job to make the given models searchable.
+   * Dispatch the job to make the given models searchable throught
+   * the search engine the given models are using.
+   *
+   * @todo Consider using queues to defer job execution.
    *
    * @param {Collection} models
    */
-  static makeSearchable (collection) {
+  static makeSearchable (models) {
+    if (!models.size()) {
+      return
+    }
+    return models.first().searchableUsing().update(models)
+  }
 
+  /**
+   * Dispatch the job to remove the given models from the search index
+   * the given models are using.
+   *
+   * @todo Consider using queues to defer job execution.
+   *
+   * @param {Collection} models
+   */
+  static makeUnsearchable (models) {
+    if (!models.size()) {
+      return
+    }
+    return models.first().searchableUsing().delete(models)
   }
 }
 

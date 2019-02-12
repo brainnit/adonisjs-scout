@@ -8,3 +8,5 @@ stats.json
 .vscode
 *.log
 yarn.lock
+*.sqlite
+.env

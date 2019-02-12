@@ -63,7 +63,7 @@ class Scout {
   }
 }
 
-proxyMethods.map(method => {
+proxyMethods.forEach(method => {
   Scout.prototype[method] = function (...params) {
     return this.engine()[method](...params)
   }

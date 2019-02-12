@@ -61,8 +61,10 @@ class ScoutProvider extends ServiceProvider {
    * @private
    */
   _registerSearchableTrait () {
-    this.app.bind('Adonis/Traits/Searchable', () =>
-      require('../src/Searchable'))
+    this.app.bind('Adonis/Traits/Searchable', () => {
+      const Searchable = require('../src/Searchable')
+      return new Searchable()
+    })
     this.app.alias('Adonis/Traits/Searchable', 'Searchable')
   }
 }
