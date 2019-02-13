@@ -1,7 +1,8 @@
 'use strict'
 
+const { ioc } = require('@adonisjs/fold')
 const { Macroable } = require('macroable')
-const { InvalidArgumentException } = require('../src/Exceptions')
+const CE = require('../src/Exceptions')
 
 /**
  * @typedef {import('@adonisjs/lucid/src/Lucid/Model')} Model
@@ -26,9 +27,11 @@ class Builder extends Macroable {
     this.model = model
     this.query = query
     this.index = null
+    this.rules = []
     this.wheres = []
     this.limit = null
     this.orders = []
+    this.aggregates = []
   }
 
   /**
@@ -44,6 +47,43 @@ class Builder extends Macroable {
   }
 
   /**
+   * Add a search rule to the search query.
+   *
+   * @param {String} ruleClass
+   *
+   * @return {Builder}
+   */
+  rule (ruleClass) {
+    let modelRules = this.model.searchableRules()
+
+    if (typeof modelRules === 'string') {
+      modelRules = [ modelRules ]
+    }
+
+    if (modelRules.includes(ruleClass) === false) {
+      throw CE.LogicalException.ruleNotSupported(ruleClass)
+    }
+
+    this.rules.push(ruleClass)
+    return this
+  }
+
+  /**
+   * Build all rules.
+   *
+   * @return {Object} Query
+   */
+  buildRules () {
+    let queryObject = {}
+    this.rules.forEach(ruleClass => {
+      const searchRule = ioc.make(ruleClass)
+      queryObject = Object.assign(queryObject, searchRule.buildQuery(this))
+    })
+
+    return queryObject
+  }
+
+  /**
    * Add a constraint to the search query.
    *
    * @param {String} field
@@ -51,8 +91,8 @@ class Builder extends Macroable {
    *
    * @return {Builder}
    */
-  where (field, value) {
-    this.wheres.push({ field, value })
+  where (field, operator, value) {
+    this.wheres.push({ field, operator, value })
     return this
   }
 
@@ -79,12 +119,25 @@ class Builder extends Macroable {
   orderBy (field, direction = 'asc') {
     direction = direction.toLowerCase()
     if (direction !== 'asc' && direction !== 'desc') {
-      throw InvalidArgumentException.invalidParameter(
+      throw CE.InvalidArgumentException.invalidParameter(
         `Direction should be either asc or desc (${direction} given)`
       )
     }
 
     this.orders.push({ field, direction })
+    return this
+  }
+
+  /**
+   * Add an aggregation to the search query.
+   *
+   * @param {String} operator
+   * @param {String} field
+   *
+   * @return {Builder}
+   */
+  aggregate (operator, field) {
+    this.aggregates.push({ operator, field })
     return this
   }
 

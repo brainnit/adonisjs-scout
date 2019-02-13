@@ -33,6 +33,12 @@ describe('ScoutProvider', () => {
     expect(ioc.use('Searchable')).toBeInstanceOf(Searchable)
   })
 
+  it('SearchRule should be registered just fine', () => {
+    const SearchRule = require('../src/SearchRule')
+    expect(ioc.use('Adonis/Addons/Scout/SearchRule')).toEqual(SearchRule)
+    expect(ioc.use('Scout/SearchRule')).toEqual(SearchRule)
+  })
+
   it('Scout should call engine manager to extend drivers', () => {
     const Scout = require('../src/Scout')
     const configMock = jest.fn()

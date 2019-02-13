@@ -14,6 +14,7 @@ class ScoutProvider extends ServiceProvider {
     this._registerScout()
     this._registerEngineManager()
     this._registerSearchableTrait()
+    this._registerSearchRule()
   }
 
   /**
@@ -66,6 +67,22 @@ class ScoutProvider extends ServiceProvider {
       return new Searchable()
     })
     this.app.alias('Adonis/Traits/Searchable', 'Searchable')
+  }
+
+  /**
+   * Register search rule class.
+   *
+   * @method _registerSearchRule
+   *
+   * @return {void}
+   *
+   * @private
+   */
+  _registerSearchRule () {
+    this.app.bind('Adonis/Addons/Scout/SearchRule', () => {
+      return require('../src/SearchRule')
+    })
+    this.app.alias('Adonis/Addons/Scout/SearchRule', 'Scout/SearchRule')
   }
 }
 

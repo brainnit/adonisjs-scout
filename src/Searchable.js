@@ -1,7 +1,6 @@
 'use strict'
 
 const { ioc } = require('@adonisjs/fold')
-const Config = ioc.use('Config')
 const ModelHook = require('./ModelHook')
 const Builder = require('./Builder')
 
@@ -60,7 +59,29 @@ class Searchable {
     }
 
     /**
+     * The search rules to be used for searching data in reusable ways.
+     * The return value(s) must always be ES6 class(es).
+     *
+     * By default it is empty.
+     *
+     * @override
+     *
+     * @method searchableRules
+     *
+     * @static
+     *
+     * @return {Array|String} ES6 Class
+     */
+    if (!Model.searchableRules) {
+      Model.searchableRules = function () {
+        return []
+      }
+    }
+
+    /**
      * Get the index name for the model.
+     *
+     * @override
      *
      * @method searchableAs
      *
@@ -70,13 +91,17 @@ class Searchable {
      *
      * @return {String} Search index name
      */
-    Model.prototype.searchableAs = function () {
-      const prefix = Config.get('scout.prefix')
-      return `${prefix}${this.constructor.table}`
+    if (!Model.prototype.searchableAs) {
+      Model.prototype.searchableAs = function () {
+        const prefix = ioc.use('Config').get('scout.prefix')
+        return `${prefix}${this.constructor.table}`
+      }
     }
 
     /**
      * Determine if the model should be searchable.
+     *
+     * @override
      *
      * @method shouldBeSearchable
      *
@@ -84,26 +109,44 @@ class Searchable {
      *
      * @return {Boolean}
      */
-    Model.prototype.shouldBeSearchable = function () {
-      return true
+    if (!Model.prototype.shouldBeSearchable) {
+      Model.prototype.shouldBeSearchable = function () {
+        return true
+      }
     }
 
     /**
      * Get model unique key to index in the search engine.
      *
+     * @override
+     *
+     * @method getSearchableKey
+     *
+     * @instance
+     *
      * @return {String}
      */
-    Model.prototype.getSearchableKey = function () {
-      return this.primaryKeyValue
+    if (!Model.prototype.getSearchableKey) {
+      Model.prototype.getSearchableKey = function () {
+        return this.primaryKeyValue
+      }
     }
 
     /**
      * Get the indexable data for the model in JSON format.
      *
+     * @override
+     *
+     * @method toSearchableJSON
+     *
+     * @instance
+     *
      * @return {Object} JSON
      */
-    Model.prototype.toSearchableJSON = function () {
-      return this.toJSON()
+    if (!Model.prototype.toSearchableJSON) {
+      Model.prototype.toSearchableJSON = function () {
+        return this.toJSON()
+      }
     }
 
     /**

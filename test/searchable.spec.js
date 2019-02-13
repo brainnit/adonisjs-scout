@@ -115,6 +115,19 @@ describe('Searchable', () => {
     expect(ModelStub.search()).toBeInstanceOf(Builder)
   })
 
+  it('searchRaw calls engine searchRaw and return results directly', () => {
+    //
+  })
+  it('searchableRules returns no search rules by default', () => {
+    ModelStub._bootIfNotBooted()
+    expect(ModelStub.searchableRules()).toEqual([])
+  })
+
+  it('searchableRules returns model supported rules when defined', () => {
+    CustomRuleModelStub._bootIfNotBooted()
+    expect(CustomRuleModelStub.searchableRules()).toEqual(['CustomRule'])
+  })
+
   it('makeSearchable calls engine update method to index models', () => {
     const engineMock = jest.fn()
     engineMock.update = jest.fn()
@@ -191,5 +204,15 @@ class AutoSyncDisabledModelStub extends Model {
 
   static get table () {
     return 'otherstubs'
+  }
+}
+
+class CustomRuleModelStub extends Model {
+  static get traits () {
+    return ['@provider:Searchable']
+  }
+
+  static searchableRules () {
+    return ['CustomRule']
   }
 }

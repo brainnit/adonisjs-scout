@@ -3,6 +3,11 @@
 const AbstractDriver = require('./Abstract')
 const ElasticsearchClient = require('elasticsearch').Client
 const _ = require('lodash')
+const bodybuilder = require('bodybuilder')
+
+/**
+ * @typedef {import('../Builder')} Builder
+ */
 
 class Elasticsearch extends AbstractDriver {
   /**
@@ -99,17 +104,83 @@ class Elasticsearch extends AbstractDriver {
 
     await this.transporter.initIndex(index)
 
-    return this.transporter.search(index, [])
+    const queryDSL = this._buildQueryDSL(builder)
+
+    return this.transporter.search(index, queryDSL)
   }
 
   /**
-   * Perform the given search on the engine.
+   * Build the Query DSL based on the builder state.
    *
-   * @throws
+   * @private
    *
    * @param {Builder} builder
    *
-   * @return {void}
+   * @return {Object}
+   */
+  _buildQueryDSL (builder) {
+    // Uses the bodybuilder to help us build the query
+    const queryBuilder = bodybuilder()
+
+    // Tries to find the query string in any field
+    queryBuilder.query('query_string', 'query', builder.query)
+
+    // build the filters
+    this._buildFilters(queryBuilder, builder.wheres)
+
+    // build the sort
+    this._buildSort(queryBuilder, builder.orders)
+
+    // build the aggregates
+    this._buildAggregates(queryBuilder, builder.aggregates)
+
+    // build the search rules
+    const rulesQuery = builder.buildRules()
+
+    console.log(rulesQuery)
+
+    return queryBuilder.build()
+  }
+
+  _buildFilters (queryBuilder, wheres) {
+    if (!wheres) return
+
+    wheres.forEach(where => {
+      queryBuilder.filter(where.operator, where.field, where.value)
+    })
+
+    return queryBuilder
+  }
+
+  _buildSort (queryBuilder, orders) {
+    if (!orders) return
+
+    const sortArray = orders.map(order => {
+      return { [order.field]: order.direction }
+    })
+
+    queryBuilder.sort(sortArray)
+
+    return queryBuilder
+  }
+
+  _buildAggregates (queryBuilder, aggregates) {
+    if (!aggregates) return
+
+    aggregates.forEach(agg => {
+      queryBuilder.aggregation(agg.operator, agg.field)
+    })
+
+    return queryBuilder
+  }
+
+  /**
+   * Performs the given raw search on the engine.
+   *
+   * @param {String} index Index
+   * @param {Object} queryDSL Query DSL
+   *
+   * @return {Promise}
    */
   async searchRaw (index, queryDSL) {
     await this.transporter.initIndex(index)
@@ -346,9 +417,17 @@ class ElasticsearchTransporter {
     })
   }
 
-  search (index, searchBodyDSL = {}) {
+  /**
+   * Perform search on the specified index.
+   *
+   * @param {String} index Index name
+   * @param {Object} queryDSL Query DSL
+   *
+   * @return {Promise}
+   */
+  search (index, queryDSL = {}) {
     return new Promise((resolve, reject) => {
-      this.Client.search({ index, body: searchBodyDSL }, (error, result) => {
+      this.Client.search({ index, body: queryDSL }, (error, result) => {
         if (error) {
           reject(error)
         } else {

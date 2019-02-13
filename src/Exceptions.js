@@ -59,6 +59,15 @@ class LogicalException extends GE.LogicalException {
       this.repo
     )
   }
+
+  static ruleNotSupported (rule) {
+    return new this(
+      `Model does not support searchable rule ${rule}`,
+      500,
+      'E_UNSUPPORTED_SEARCHABLE_RULE',
+      this.repo
+    )
+  }
 }
 
 module.exports = {

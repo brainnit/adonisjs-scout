@@ -22,10 +22,14 @@ describe('Builder', () => {
     expect(builder.index).toEqual('foo')
   })
 
-  it('where adds condition to wheres', () => {
+  it('where adds to wheres', () => {
     const builder = new Builder(jest.fn(), 'query')
-    builder.where('foo', 'bar')
-    expect(builder.wheres).toContainEqual({ field: 'foo', value: 'bar' })
+    builder.where('foo', 'match', 'bar')
+    expect(builder.wheres).toContainEqual({
+      field: 'foo',
+      operator: 'match',
+      value: 'bar'
+    })
   })
 
   it('take changes limit', () => {
@@ -34,7 +38,7 @@ describe('Builder', () => {
     expect(builder.limit).toEqual(10)
   })
 
-  it('orderBy adds condition to orders', () => {
+  it('orderBy adds to orders', () => {
     const builder = new Builder(jest.fn(), 'query')
     builder.orderBy('foo', 'asc')
     expect(builder.orders).toContainEqual({ field: 'foo', direction: 'asc' })
@@ -44,6 +48,15 @@ describe('Builder', () => {
     const builder = new Builder(jest.fn(), 'query')
     const fn = () => builder.orderBy('foo', 'invalid')
     expect(fn).toThrow()
+  })
+
+  it('aggregate adds to aggregates', () => {
+    const builder = new Builder(jest.fn(), 'query')
+    builder.aggregate('sum', 'foo')
+    expect(builder.aggregates).toContainEqual({
+      operator: 'sum',
+      field: 'foo'
+    })
   })
 
   it('raw forwards to engine and returns as is', () => {
