@@ -30,7 +30,8 @@
   "dependencies": {
     "@adonisjs/generic-exceptions": "^3.0.1",
     "debug": "^4.1.1",
-    "lodash": "^4.17.11"
+    "lodash": "^4.17.11",
+    "macroable": "^2.0.1"
   },
   "devDependencies": {
     "@adonisjs/fold": "^4.0.9",

@@ -35,12 +35,11 @@ class Searchable {
      * @static
      *
      * @param {String} query
-     * @param {function} callback
      *
      * @return {Builder}
      */
-    Model.search = function (query = '', callback = null) {
-      return new Builder(query, callback)
+    Model.search = function (query = '') {
+      return new Builder(new Model(), query)
     }
 
     /**

@@ -138,6 +138,28 @@ class AbstractDriver {
   flush (model) {
     throw CE.LogicalException.notImplementedMethod('flush')
   }
+
+  /**
+   * Get the results of the query as a Collection of primary keys.
+   *
+   * @param {Builder} builder
+   *
+   * @return {Collection}
+   */
+  keys (builder) {
+    return this.mapIds(this.search(builder))
+  }
+
+  /**
+   * Get the results of the given query mapped onto models.
+   *
+   * @param {Builder} builder
+   *
+   * @return {Collection}
+   */
+  get (builder) {
+    return this.map(builder, this.search(builder), builder.model)
+  }
 }
 
 module.exports = AbstractDriver
