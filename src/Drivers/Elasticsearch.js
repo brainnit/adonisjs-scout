@@ -29,7 +29,7 @@ class Elasticsearch extends AbstractDriver {
    *
    * @return {void}
    */
-  update (model) {
+  async update (model) {
     if (!model) {
       return
     }
@@ -47,13 +47,13 @@ class Elasticsearch extends AbstractDriver {
     /**
      * Initializes search index for the given model, if needed
      */
-    this.transporter.initIndex(model.searchableAs())
+    await this.transporter.initIndex(model.searchableAs())
 
     /**
      * Save serialized model to the search engine, using the result
      * from `model.getSearchableKey()` as object id.
      */
-    this.transporter.index(
+    await this.transporter.index(
       model.searchableAs(),
       model.getSearchableKey(),
       model.toSearchableJSON()
@@ -69,20 +69,107 @@ class Elasticsearch extends AbstractDriver {
    *
    * @return {void}
    */
-  delete (models) {
+  async delete (models) {
     if (!models) {
       return
     }
 
     const index = models.first().searchableAs()
 
-    this.transporter.initIndex(index)
+    await this.transporter.initIndex(index)
 
     const objectIds = _.map(models.rows, model => {
       return model.getSearchableKey()
     })
 
-    this.transporter.deleteBulk(index, objectIds)
+    await this.transporter.deleteBulk(index, objectIds)
+  }
+
+  /**
+   * Perform the given search on the engine.
+   *
+   * @throws
+   *
+   * @param {Builder} builder
+   *
+   * @return {void}
+   */
+  async search (builder) {
+    const index = builder.index || builder.model.searchableAs()
+
+    await this.transporter.initIndex(index)
+
+    return this.transporter.search(index, [])
+  }
+
+  /**
+   * Perform the given search on the engine.
+   *
+   * @throws
+   *
+   * @param {Builder} builder
+   *
+   * @return {void}
+   */
+  async searchRaw (index, queryDSL) {
+    await this.transporter.initIndex(index)
+    return this.transporter.search(index, queryDSL)
+  }
+
+  /**
+   * Perform the given search pagination on the engine.
+   *
+   * @throws
+   *
+   * @param {Builder} builder
+   * @param {Number} size
+   * @param {String} cursor
+   *
+   * @return {void}
+   */
+  paginate (builder, size, cursor) {
+    throw Error
+  }
+
+  /**
+   * Pluck and return the primary keys of the given results.
+   *
+   * @throws
+   *
+   * @param {Builder} builder
+   * @param {*} results
+   * @param {Model} model
+   *
+   * @return {Collection}
+   */
+  mapIds (builder, results, model) {
+    throw Error
+  }
+
+  /**
+   * Map the given results to instances of the given model.
+   *
+   * @throws
+   *
+   * @param {*} results
+   *
+   * @return {Collection}
+   */
+  map (results, model) {
+    throw Error
+  }
+
+  /**
+   * Get the total count from a raw result returned by the engine.
+   *
+   * @throws
+   *
+   * @param {*} results
+   *
+   * @return {Number}
+   */
+  getTotalCount (results) {
+    throw Error
   }
 
   /**
@@ -94,10 +181,10 @@ class Elasticsearch extends AbstractDriver {
    *
    * @return {void}
    */
-  flush (model) {
+  async flush (model) {
     const index = model.searchableAs()
-    this.transporter.initIndex(index)
-    this.transporter.flushIndex(index)
+    await this.transporter.initIndex(index)
+    await this.transporter.flushIndex(index)
   }
 }
 
@@ -250,6 +337,18 @@ class ElasticsearchTransporter {
 
     return new Promise((resolve, reject) => {
       this.Client.bulk({ body: bodyActions }, (error, result) => {
+        if (error) {
+          reject(error)
+        } else {
+          resolve(result)
+        }
+      })
+    })
+  }
+
+  search (index, searchBodyDSL = {}) {
+    return new Promise((resolve, reject) => {
+      this.Client.search({ index, body: searchBodyDSL }, (error, result) => {
         if (error) {
           reject(error)
         } else {

@@ -71,6 +71,19 @@ class AbstractDriver {
   }
 
   /**
+   * Perform the given search on the engine.
+   *
+   * @throws
+   *
+   * @param {*} ...params
+   *
+   * @return {void}
+   */
+  searchRaw (...params) {
+    throw CE.LogicalException.notImplementedMethod('searchRaw')
+  }
+
+  /**
    * Perform the given search pagination on the engine.
    *
    * @throws

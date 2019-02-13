@@ -43,6 +43,23 @@ class Searchable {
     }
 
     /**
+     * Perform a raw search against the model's indexed data
+     * using the desired engine directly.
+     *
+     * @method searchRaw
+     *
+     * @static
+     *
+     * @param {String} query
+     *
+     * @return {*}
+     */
+    Model.searchRaw = function (...params) {
+      const model = new Model()
+      return model.searchableUsing().searchRaw(model.searchableAs(), ...params)
+    }
+
+    /**
      * Get the index name for the model.
      *
      * @method searchableAs
