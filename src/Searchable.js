@@ -216,13 +216,13 @@ class Searchable {
      * @return {*}
      */
     Model.prototype.getScoutModelsByIds = function (builder, ids) {
-      const query = this.query()
+      const query = Model.query()
 
       if (builder.queryCallback) {
         builder.queryCallback(query)
       }
 
-      return query.whereIn(this.constructor.getSearchableKeyName(), ids).fetch()
+      return query.whereIn(Model.getSearchableKeyName(), ids).fetch()
     }
   }
 
