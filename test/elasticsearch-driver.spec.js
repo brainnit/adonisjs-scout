@@ -1,16 +1,30 @@
 'use strict'
 
 require('dotenv').load()
+require('@adonisjs/lucid/lib/iocResolver').setFold(require('@adonisjs/fold'))
 const { ioc } = require('@adonisjs/fold')
+const { setupResolver } = require('@adonisjs/sink')
 const AbstractDriver = require('../src/Drivers/Abstract')
 const ElasticsearchDriver = require('../src/Drivers').elasticsearch
 const VanillaSerializer = require('@adonisjs/lucid/src/Lucid/Serializers/Vanilla')
+const Model = require('@adonisjs/lucid/src/Lucid/Model')
 const Builder = require('../src/Builder')
 const SearchRule = require('../src/SearchRule')
 const nock = require('nock')
 const bodybuilder = require('bodybuilder')
 
 beforeAll(() => {
+  ioc.bind('Adonis/Src/Model', () => Model)
+  ioc.alias('Adonis/Src/Model', 'Model')
+
+  ioc.bind('Adonis/Traits/Searchable', () => {
+    const Searchable = require('../src/Searchable')
+    return new Searchable()
+  })
+  ioc.alias('Adonis/Traits/Searchable', 'Searchable')
+
+  setupResolver()
+
   nock.disableNetConnect()
   nock('http://localhost:9200').get('/').reply(200, 'connection')
 })
@@ -145,6 +159,46 @@ describe('ElasticsearchDriver', () => {
         }
       }
     })
+  })
+
+  it('map correctly maps results to models', () => {
+    const elasticsearch = new ElasticsearchDriver()
+
+    const results = {
+      'took': 0,
+      'timed_out': false,
+      'hits': {
+        'total': 1,
+        'max_score': 0.018018505,
+        'hits': [
+          {
+            '_index': 'users',
+            '_type': '_doc',
+            '_id': 'yGKT6GgBcXAjfRQqBFTQ',
+            '_score': 0.018018505,
+            '_source': {
+              'foo': 'bar'
+            }
+          }
+        ]
+      }
+    }
+
+    const TestModel = require('./fixtures/TestModel')
+    TestModel._bootIfNotBooted()
+    const resultModel = new TestModel()
+    resultModel.newUp({ id: 'yGKT6GgBcXAjfRQqBFTQ' })
+
+    const collection = new VanillaSerializer([ resultModel ])
+
+    const modelMock = jest.fn()
+    modelMock.getSearchableKey = jest.fn(() => 'yGKT6GgBcXAjfRQqBFTQ')
+    modelMock.getScoutModelsByIds = jest.fn(() => collection)
+
+    const builder = new Builder(modelMock)
+    const map = elasticsearch.map(builder, results, builder.model)
+
+    expect(map).toEqual(collection)
   })
 })
 

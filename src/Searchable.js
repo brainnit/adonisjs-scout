@@ -79,6 +79,23 @@ class Searchable {
     }
 
     /**
+     * Get the key name used to index the model.
+     *
+     * @override
+     *
+     * @method getSearchableKey
+     *
+     * @static
+     *
+     * @return {String}
+     */
+    if (!Model.getSearchableKeyName) {
+      Model.getSearchableKeyName = function () {
+        return Model.primaryKey
+      }
+    }
+
+    /**
      * Get the index name for the model.
      *
      * @override
@@ -116,7 +133,7 @@ class Searchable {
     }
 
     /**
-     * Get model unique key to index in the search engine.
+     * Get the key value to index the model.
      *
      * @override
      *
@@ -184,6 +201,28 @@ class Searchable {
      */
     Model.prototype.searchableUsing = function () {
       return ioc.use('Scout').engine()
+    }
+
+    /**
+     * Get the requested models from an array of object IDs.
+     *
+     * @method getScoutModelsByIds
+     *
+     * @instance
+     *
+     * @param {Builder} builder
+     * @param {Array} ids
+     *
+     * @return {*}
+     */
+    Model.prototype.getScoutModelsByIds = function (builder, ids) {
+      const query = this.query()
+
+      if (builder.queryCallback) {
+        builder.queryCallback(query)
+      }
+
+      return query.whereIn(this.constructor.getSearchableKeyName(), ids).fetch()
     }
   }
 

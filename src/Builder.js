@@ -190,6 +190,10 @@ class Builder extends Macroable {
   engine () {
     return this.model.searchableUsing()
   }
+
+  static get Serializer () {
+    return this.model.resolveSerializer()
+  }
 }
 
 Builder._macros = {}

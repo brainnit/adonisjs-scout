@@ -2,8 +2,8 @@
 
 const AbstractDriver = require('./Abstract')
 const ElasticsearchClient = require('elasticsearch').Client
-const _ = require('lodash')
 const bodybuilder = require('bodybuilder')
+const _ = require('lodash')
 
 /**
  * @typedef {import('../Builder')} Builder
@@ -87,9 +87,7 @@ class Elasticsearch extends AbstractDriver {
 
     await this.transporter.initIndex(index)
 
-    const objectIds = _.map(models.rows, model => {
-      return model.getSearchableKey()
-    })
+    const objectIds = _.map(models.rows, model => model.getSearchableKey())
 
     await this.transporter.deleteBulk(index, objectIds)
   }
@@ -255,8 +253,23 @@ class Elasticsearch extends AbstractDriver {
    *
    * @return {Collection}
    */
-  map (results, model) {
-    throw Error
+  map (builder, results, model) {
+    if (_.isEmpty(results) || results.hits.total === 0) {
+      const Serializer = model.constructor.resolveSerializer()
+      return new Serializer([])
+    }
+
+    const { total, hits } = results.hits
+
+    const objectIds = _.map(hits, '_id')
+
+    const collection = model.getScoutModelsByIds(builder, objectIds)
+
+    collection.rows = _.filter(collection.rows, model => {
+      return objectIds.includes(model.getSearchableKey())
+    })
+
+    return collection
   }
 
   /**

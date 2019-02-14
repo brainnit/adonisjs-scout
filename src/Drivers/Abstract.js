@@ -122,7 +122,7 @@ class AbstractDriver {
    *
    * @return {Collection}
    */
-  map (results, model) {
+  map (builder, results, model) {
     throw CE.LogicalException.notImplementedMethod('map')
   }
 
@@ -168,10 +168,12 @@ class AbstractDriver {
    *
    * @param {Builder} builder
    *
-   * @return {Collection}
+   * @return {Promise|Collection}
    */
   get (builder) {
-    return this.map(builder, this.search(builder), builder.model)
+    return this.search(builder).then(
+      results => this.map(builder, results, builder.model)
+    )
   }
 }
 

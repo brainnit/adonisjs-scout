@@ -92,7 +92,11 @@ describe('Searchable', () => {
     expect(model.shouldBeSearchable()).toBe(true)
   })
 
-  it('getSearchableKey returns model primaryKey by default', () => {
+  it('getSearchableKeyName returns model primaryKey by default', () => {
+    expect(ModelStub.getSearchableKeyName()).toEqual('id')
+  })
+
+  it('getSearchableKey returns model primaryKeyValue by default', () => {
     const model = new ModelStub()
     ModelStub._bootIfNotBooted()
     model.newUp({ id: 1 })

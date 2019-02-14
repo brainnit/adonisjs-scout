@@ -13,7 +13,7 @@ class NullDriver extends AbstractDriver {
   searchRaw (index, queryObject) {}
   paginate (builder, size, cursor) {}
   mapIds (results) {}
-  map (results, model) {}
+  map (builder, results, model) {}
   getTotalCount (results) {}
   flush (model) {}
 }
