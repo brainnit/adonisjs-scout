@@ -130,9 +130,12 @@ class Elasticsearch extends AbstractDriver {
       builder.buildRules().forEach(query => {
         queryBuilder.query('bool', query)
       })
-    } else {
-      // By default, searches for `query` in any field by default
+    } else if (builder.query) {
+      // Searches for `query` in any document field
       queryBuilder.query('query_string', 'query', builder.query)
+    } else {
+      // Match all
+      queryBuilder.query('match_all', {})
     }
 
     // build the filters
