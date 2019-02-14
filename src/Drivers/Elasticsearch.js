@@ -264,10 +264,20 @@ class Elasticsearch extends AbstractDriver {
 
     const { total, hits } = results.hits
 
+    /**
+     * Build array containing only the object ids
+     */
     const objectIds = _.map(hits, '_id')
 
+    /**
+     * Search database through model class to find related models
+     */
     const collection = model.getScoutModelsByIds(builder, objectIds)
 
+    /**
+     * Filter collection.rows to return only the models matching one of
+     * the object ids returned from elasticsearch
+     */
     collection.rows = _.filter(collection.rows, model => {
       return objectIds.includes(model.getSearchableKey())
     })
