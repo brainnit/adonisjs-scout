@@ -402,7 +402,7 @@ class ElasticsearchTransporter {
       index,
       type: '_doc',
       id: objectId,
-      ...objectData
+      body: objectData
     }
 
     return new Promise((resolve, reject) => {
