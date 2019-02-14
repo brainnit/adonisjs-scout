@@ -7,6 +7,17 @@ const ElasticsearchDriver = require('../src/Drivers').elasticsearch
 const VanillaSerializer = require('@adonisjs/lucid/src/Lucid/Serializers/Vanilla')
 const Builder = require('../src/Builder')
 const SearchRule = require('../src/SearchRule')
+const nock = require('nock')
+const bodybuilder = require('bodybuilder')
+
+beforeAll(() => {
+  nock.disableNetConnect()
+  nock('http://localhost:9200').get('/').reply(200, 'connection')
+})
+
+afterAll(() => {
+  nock.enableNetConnect()
+})
 
 describe('ElasticsearchDriver', () => {
   it('driver should be an instanceof abstract driver', () => {
@@ -186,6 +197,174 @@ describe('ElasticsearchTransport', () => {
       index: 'foo'
     })
     expect(transporter._updateIndex).toHaveBeenCalledWith('foo', {})
+  })
+
+  it('_createIndex creates a new index', async () => {
+    const transporter = new ElasticsearchDriver.Transport(config)
+    jest.spyOn(transporter.Client.indices, 'create')
+
+    const interceptor = nock('http://localhost:9200')
+      .put('/users')
+      .reply(200, {
+        'acknowledged': true
+      })
+
+    await transporter._createIndex('users', { foo: 'bar' })
+
+    expect(transporter.Client.indices.create).toHaveBeenCalledWith({
+      index: 'users',
+      body: {
+        foo: 'bar'
+      }
+    }, expect.anything())
+
+    nock.removeInterceptor(interceptor)
+  })
+
+  it('_createIndex updates an existing index', async () => {
+    const transporter = new ElasticsearchDriver.Transport(config)
+    jest.spyOn(transporter.Client.indices, 'upgrade')
+
+    const interceptor = nock('http://localhost:9200')
+      .post('/users/_upgrade')
+      .reply(200, {
+        'acknowledged': true
+      })
+
+    await transporter._updateIndex('users', { foo: 'bar' })
+
+    expect(transporter.Client.indices.upgrade).toHaveBeenCalledWith({
+      index: 'users',
+      body: {
+        foo: 'bar'
+      }
+    }, expect.anything())
+
+    nock.removeInterceptor(interceptor)
+  })
+
+  it('index adds object to index', async () => {
+    const transporter = new ElasticsearchDriver.Transport(config)
+    jest.spyOn(transporter.Client, 'index')
+
+    const interceptor = nock('http://localhost:9200')
+      .post('/users/_doc/1')
+      .reply(200, {
+        '_index': 'users',
+        '_type': '_doc',
+        '_id': 'key1',
+        '_version': 1,
+        'result': 'created'
+      })
+
+    await transporter.index('users', '1', { foo: 'bar' })
+
+    expect(transporter.Client.index).toHaveBeenCalledWith({
+      index: 'users',
+      type: '_doc',
+      id: '1',
+      body: {
+        foo: 'bar'
+      }
+    }, expect.anything())
+
+    nock.removeInterceptor(interceptor)
+  })
+
+  it('deleteBulk remove objects from index', async () => {
+    const transporter = new ElasticsearchDriver.Transport(config)
+    jest.spyOn(transporter.Client, 'bulk')
+
+    const interceptor = nock('http://localhost:9200')
+      .post('/_bulk')
+      .reply(200, {
+        'took': 0,
+        'errors': false,
+        'items': [
+          {
+            'delete': {
+              '_index': 'users',
+              '_type': '_doc',
+              '_id': '1',
+              '_version': 17,
+              'result': 'deleted',
+              'status': 200
+            }
+          }
+        ]
+      })
+
+    await transporter.deleteBulk('users', [ '1' ])
+
+    expect(transporter.Client.bulk).toHaveBeenCalledWith({
+      body: [
+        { delete: { _index: 'users', _type: '_doc', _id: '1' } }
+      ]
+    }, expect.anything())
+
+    nock.removeInterceptor(interceptor)
+  })
+
+  it('search fetch results from index', async () => {
+    const transporter = new ElasticsearchDriver.Transport(config)
+    jest.spyOn(transporter.Client, 'search')
+
+    const interceptor = nock('http://localhost:9200')
+      .post('/users/_search')
+      .reply(200, {
+        'took': 0,
+        'timed_out': false,
+        'hits': {
+          'total': 1,
+          'max_score': 0.018018505,
+          'hits': [
+            {
+              '_index': 'users',
+              '_type': '_doc',
+              '_id': 'yGKT6GgBcXAjfRQqBFTQ',
+              '_score': 0.018018505,
+              '_source': {
+                'foo': 'bar'
+              }
+            }
+          ]
+        }
+      })
+
+    const query = bodybuilder().query('query_string', 'query', 'bar').build()
+
+    await transporter.search('users', query)
+
+    expect(transporter.Client.search).toHaveBeenCalledWith({
+      index: 'users',
+      body: query
+    }, expect.anything())
+
+    nock.removeInterceptor(interceptor)
+  })
+
+  it('flushIndex flushes the index', async () => {
+    const transporter = new ElasticsearchDriver.Transport(config)
+    jest.spyOn(transporter.Client.indices, 'flush')
+
+    const interceptor = nock('http://localhost:9200')
+      .post('/users/_flush?force=true')
+      .reply(200, {
+        '_shards': {
+          'total': 1,
+          'successful': 1,
+          'failed': 0
+        }
+      })
+
+    await transporter.flushIndex('users')
+
+    expect(transporter.Client.indices.flush).toHaveBeenCalledWith({
+      index: 'users',
+      force: true
+    }, expect.anything())
+
+    nock.removeInterceptor(interceptor)
   })
 })
 

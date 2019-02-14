@@ -7,7 +7,7 @@ const VanillaSerializer = require('@adonisjs/lucid/src/Lucid/Serializers/Vanilla
 const { ioc } = require('@adonisjs/fold')
 const { Config, Env, setupResolver } = require('@adonisjs/sink')
 const Builder = require('../src/Builder')
-const fixtures = require('./helpers/fixtures')
+const setup = require('./fixtures/setup')
 
 beforeAll(async () => {
   ioc.singleton('Adonis/Src/Env', () => new Env())
@@ -55,11 +55,11 @@ beforeAll(async () => {
 
   setupResolver()
 
-  await fixtures.setupTables(ioc.use('Database'))
+  await setup.setupTables(ioc.use('Database'))
 })
 
 afterAll(async () => {
-  await fixtures.dropTables(ioc.use('Database'))
+  await setup.dropTables(ioc.use('Database'))
 })
 
 afterEach(async () => {

@@ -474,14 +474,16 @@ class ElasticsearchTransporter {
    * @throws
    *
    * @param {String} name Index name
+   * @param {Object} customOptions Extra options
    *
    * @return {Promise}
    */
-  flushIndex (name) {
+  flushIndex (name, customOptions = {}) {
+    const options = Object.assign({ force: true }, customOptions)
+
     const requestPayload = {
       index: name,
-      force: true,
-      waitIfOngoing: true
+      ...options
     }
 
     return new Promise((resolve, reject) => {
