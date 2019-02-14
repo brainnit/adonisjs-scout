@@ -10,6 +10,7 @@ class NullDriver extends AbstractDriver {
   update (models) {}
   delete (models) {}
   search (builder) {}
+  searchRaw (index, queryObject) {}
   paginate (builder, size, cursor) {}
   mapIds (results) {}
   map (results, model) {}

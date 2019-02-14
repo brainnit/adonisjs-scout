@@ -207,13 +207,13 @@ class Elasticsearch extends AbstractDriver {
    * Performs the given raw search on the engine.
    *
    * @param {String} index Index
-   * @param {Object} queryDSL Query DSL
+   * @param {Object} queryObject Query DSL
    *
    * @return {Promise}
    */
-  async searchRaw (index, queryDSL) {
+  async searchRaw (index, queryObject) {
     await this.transporter.initIndex(index)
-    return this.transporter.search(index, queryDSL)
+    return this.transporter.search(index, queryObject)
   }
 
   /**

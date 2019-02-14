@@ -22,11 +22,11 @@ const providers = [
 
 ## Setup
 
-@todo Add setup instructions
+Copy `config/index.js` to your app config folder and name it `scout.js`. Don't forget to setup your environment variables.
 
 ## Usage
 
-Adds `@provider:Searchable` trait to your models and define only the methods you want to override to change default behaviour:
+Add `@provider:Searchable` trait to your models and define only the methods you want to override to change default behaviour:
 
 ```js
 /** @type {typeof import('@adonisjs/lucid/src/Lucid/Model')} */

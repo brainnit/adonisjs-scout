@@ -13,6 +13,8 @@ module.exports = {
    * using AdonisJs Scout. This connection is used when syncing all your
    * Lucid models to the search engine. You should adjust this based on
    * your needs.
+   *
+   * Supported: "elasticsearch", "null"
    */
   driver: Env.get('SCOUT_DRIVER', 'elasticsearch'),
 
@@ -36,12 +38,11 @@ module.exports = {
    * set under `options` will be passed directly to elasticsearch client
    * connection.
    *
-   * See the docs:
-   * @link https://www.elastic.co/guide/en/elasticsearch/client/javascript-api/current/configuration.html
-   *
    * ```sh
-   * npm i --save elasticsearch # to install via npm
-   * yarn add elasticsearch # to install via yarn
+   * # to install via npm
+   * npm i --save elasticsearch
+   * # to install via yarn
+   * yarn add elasticsearch
    * ```
    */
   elasticsearch: {
@@ -55,5 +56,15 @@ module.exports = {
     options: {
       apiVersion: '6.4'
     }
-  }
+  },
+
+  /**
+   * ------------------------------------------------------------------------
+   * Null
+   * ------------------------------------------------------------------------
+   *
+   * Simple search engine that does and needs nothing. Very useful for
+   * testing thought
+   */
+  null: {}
 }
