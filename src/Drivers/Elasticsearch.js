@@ -9,6 +9,10 @@ const bodybuilder = require('bodybuilder')
  * @typedef {import('../Builder')} Builder
  */
 
+/**
+ * @typedef {import('bodybuilder')} bodybuilder
+ */
+
 class Elasticsearch extends AbstractDriver {
   /**
    * This method is called by engine manager automatically
@@ -110,7 +114,7 @@ class Elasticsearch extends AbstractDriver {
   }
 
   /**
-   * Build the Query DSL based on the builder state.
+   * Build the full Query DSL.
    *
    * @private
    *
@@ -122,8 +126,16 @@ class Elasticsearch extends AbstractDriver {
     // Uses the bodybuilder to help us build the query
     const queryBuilder = bodybuilder()
 
-    // Tries to find the query string in any field
-    queryBuilder.query('query_string', 'query', builder.query)
+    // If there is no search rule applied
+    if (builder.hasRules()) {
+      // Adds search rules to the query
+      builder.buildRules().forEach(query => {
+        queryBuilder.query('bool', query)
+      })
+    } else {
+      // By default, searches for `query` in any field by default
+      queryBuilder.query('query_string', 'query', builder.query)
+    }
 
     // build the filters
     this._buildFilters(queryBuilder, builder.wheres)
@@ -134,14 +146,17 @@ class Elasticsearch extends AbstractDriver {
     // build the aggregates
     this._buildAggregates(queryBuilder, builder.aggregates)
 
-    // build the search rules
-    const rulesQuery = builder.buildRules()
-
-    console.log(rulesQuery)
-
     return queryBuilder.build()
   }
 
+  /**
+   * Build the filters part of the query.
+   *
+   * @param {bodybuilder} queryBuilder
+   * @param {Array} wheres
+   *
+   * @return {bodybuilder}
+   */
   _buildFilters (queryBuilder, wheres) {
     if (!wheres) return
 
@@ -152,18 +167,32 @@ class Elasticsearch extends AbstractDriver {
     return queryBuilder
   }
 
+  /**
+   * Build the sorting part of the query.
+   *
+   * @param {bodybuilder} queryBuilder
+   * @param {Array} orders
+   *
+   * @return {bodybuilder}
+   */
   _buildSort (queryBuilder, orders) {
     if (!orders) return
 
-    const sortArray = orders.map(order => {
-      return { [order.field]: order.direction }
+    orders.forEach(order => {
+      queryBuilder.sort([order.field], order.direction)
     })
-
-    queryBuilder.sort(sortArray)
 
     return queryBuilder
   }
 
+  /**
+   * Build the aggregates part of the query.
+   *
+   * @param {bodybuilder} queryBuilder
+   * @param {Array} aggregates
+   *
+   * @return {bodybuilder}
+   */
   _buildAggregates (queryBuilder, aggregates) {
     if (!aggregates) return
 

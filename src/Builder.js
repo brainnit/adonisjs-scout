@@ -37,9 +37,11 @@ class Builder extends Macroable {
   /**
    * Specify a custom index to perform this search on.
    *
+   * @chainable
+   *
    * @param {String} index
    *
-   * @return {Builder}
+   * @returns {Builder} this
    */
   within (index) {
     this.index = index
@@ -49,9 +51,11 @@ class Builder extends Macroable {
   /**
    * Add a search rule to the search query.
    *
+   * @chainable
+   *
    * @param {String} ruleClass
    *
-   * @return {Builder}
+   * @return {Builder} this
    */
   rule (ruleClass) {
     let modelRules = this.model.searchableRules()
@@ -69,27 +73,14 @@ class Builder extends Macroable {
   }
 
   /**
-   * Build all rules.
-   *
-   * @return {Object} Query
-   */
-  buildRules () {
-    let queryObject = {}
-    this.rules.forEach(ruleClass => {
-      const searchRule = ioc.make(ruleClass)
-      queryObject = Object.assign(queryObject, searchRule.buildQuery(this))
-    })
-
-    return queryObject
-  }
-
-  /**
    * Add a constraint to the search query.
+   *
+   * @chainbale
    *
    * @param {String} field
    * @param {*} value
    *
-   * @return {Builder}
+   * @return {Builder} this
    */
   where (field, operator, value) {
     this.wheres.push({ field, operator, value })
@@ -99,9 +90,11 @@ class Builder extends Macroable {
   /**
    * Set the "limit" for the search query.
    *
+   * @chainbale
+   *
    * @param {Number} limit
    *
-   * @return {Builder}
+   * @return {Builder} this
    */
   take (limit) {
     this.limit = limit
@@ -111,19 +104,14 @@ class Builder extends Macroable {
   /**
    * Add an "order" for the search query.
    *
+   * @chainable
+   *
    * @param {String} field
    * @param {String} direction
    *
-   * @return {Builder}
+   * @return {Builder} this
    */
   orderBy (field, direction = 'asc') {
-    direction = direction.toLowerCase()
-    if (direction !== 'asc' && direction !== 'desc') {
-      throw CE.InvalidArgumentException.invalidParameter(
-        `Direction should be either asc or desc (${direction} given)`
-      )
-    }
-
     this.orders.push({ field, direction })
     return this
   }
@@ -131,10 +119,12 @@ class Builder extends Macroable {
   /**
    * Add an aggregation to the search query.
    *
+   * @chainable
+   *
    * @param {String} operator
    * @param {String} field
    *
-   * @return {Builder}
+   * @return {Builder} this
    */
   aggregate (operator, field) {
     this.aggregates.push({ operator, field })
@@ -166,6 +156,30 @@ class Builder extends Macroable {
    */
   get () {
     return this.engine().get(this)
+  }
+
+  /**
+   * Check if some search rule was applied.
+   *
+   * @return {Boolean}
+   */
+  hasRules () {
+    return !!this.rules.length
+  }
+
+  /**
+   * Build all search rules to query the index.
+   *
+   * @return {Array} Query rules
+   */
+  buildRules () {
+    const queryArray = []
+    this.rules.forEach(ruleClass => {
+      let SearchRule = ioc.use(ruleClass)
+      queryArray.push((new SearchRule(this)).buildQuery())
+    })
+
+    return queryArray
   }
 
   /**

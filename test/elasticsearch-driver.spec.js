@@ -6,6 +6,7 @@ const AbstractDriver = require('../src/Drivers/Abstract')
 const ElasticsearchDriver = require('../src/Drivers').elasticsearch
 const VanillaSerializer = require('@adonisjs/lucid/src/Lucid/Serializers/Vanilla')
 const Builder = require('../src/Builder')
+const SearchRule = require('../src/SearchRule')
 
 describe('ElasticsearchDriver', () => {
   it('driver should be an instanceof abstract driver', () => {
@@ -59,21 +60,16 @@ describe('ElasticsearchDriver', () => {
     expect(transporterMock.deleteBulk).toHaveBeenCalledWith('mocks', [ 'key1' ])
   })
 
-  it('_buildQueryDSL builds the full query', () => {
+  it('_buildQueryDSL builds full query', () => {
     const elasticsearch = new ElasticsearchDriver()
-
-    const modelMock = jest.fn()
-    modelMock.searchableRules = jest.fn(() => 'Foo/Bar')
-
-    const builder = new Builder(modelMock)
+    const builder = new Builder(jest.fn())
     builder.query = 'zoo'
-    builder.rule('Foo/Bar')
     builder.where('foo', 'match', 'bar')
     builder.orderBy('foo', 'asc')
 
-    const dsl = elasticsearch._buildQueryDSL(builder)
+    const query = elasticsearch._buildQueryDSL(builder)
 
-    expect(dsl).toEqual({
+    expect(query).toEqual({
       'sort': [
         {
           'foo': {
@@ -93,6 +89,48 @@ describe('ElasticsearchDriver', () => {
               'query': 'zoo'
             }
           }
+        }
+      }
+    })
+  })
+
+  it('_buildQueryDSL builds full query with rules', () => {
+    ioc.bind('SearchRuleStub', () => SearchRuleStub)
+    ioc.bind('OtherSearchRuleStub', () => OtherSearchRuleStub)
+    const elasticsearch = new ElasticsearchDriver()
+    const modelMock = jest.fn()
+    modelMock.searchableRules = jest.fn(() => [
+      'SearchRuleStub',
+      'OtherSearchRuleStub'
+    ])
+    const builder = new Builder(modelMock)
+    builder.rule('SearchRuleStub')
+    builder.rule('OtherSearchRuleStub')
+    builder.query = 'foobar'
+
+    const query = elasticsearch._buildQueryDSL(builder)
+
+    expect(query).toEqual({
+      query: {
+        bool: {
+          must: [
+            {
+              bool: {
+                must: {
+                  query_string: {
+                    query: 'foobar'
+                  }
+                }
+              }
+            },
+            {
+              bool: {
+                match: {
+                  foo: 'foobar'
+                }
+              }
+            }
+          ]
         }
       }
     })
@@ -150,3 +188,25 @@ describe('ElasticsearchTransport', () => {
     expect(transporter._updateIndex).toHaveBeenCalledWith('foo', {})
   })
 })
+
+class SearchRuleStub extends SearchRule {
+  buildQuery () {
+    return {
+      must: {
+        query_string: {
+          query: this.builder.query
+        }
+      }
+    }
+  }
+}
+
+class OtherSearchRuleStub extends SearchRule {
+  buildQuery () {
+    return {
+      match: {
+        foo: this.builder.query
+      }
+    }
+  }
+}

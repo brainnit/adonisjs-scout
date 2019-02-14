@@ -44,12 +44,6 @@ describe('Builder', () => {
     expect(builder.orders).toContainEqual({ field: 'foo', direction: 'asc' })
   })
 
-  it('orderBy throws if direction is not asc,desc', () => {
-    const builder = new Builder(jest.fn(), 'query')
-    const fn = () => builder.orderBy('foo', 'invalid')
-    expect(fn).toThrow()
-  })
-
   it('aggregate adds to aggregates', () => {
     const builder = new Builder(jest.fn(), 'query')
     builder.aggregate('sum', 'foo')
