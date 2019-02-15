@@ -282,6 +282,22 @@ describe('ElasticsearchDriver', () => {
 
     expect(total).toEqual(9)
   })
+
+  it('paginate correctly calls _performSearch and return its results', () => {
+
+    const elasticsearch = new ElasticsearchDriver()
+    const builder = jest.fn()
+    const results = []
+    elasticsearch._performSearch = jest.fn(() => results)
+
+    const paginate = elasticsearch.paginate(builder, 1, 20)
+
+    expect(paginate).toEqual(results)
+    expect(elasticsearch._performSearch).toHaveBeenCalledWith(builder, {
+      page: 1,
+      limit: 20
+    })
+  })
 })
 
 describe('ElasticsearchTransport', () => {

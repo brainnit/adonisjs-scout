@@ -63,7 +63,7 @@ class Elasticsearch extends AbstractDriver {
      * Save serialized model to the search engine, using the result
      * from `model.getSearchableKey()` as object id.
      */
-    await this.transporter.index(
+    return this.transporter.index(
       model.searchableAs(),
       model.getSearchableKey(),
       model.toSearchableJSON()
@@ -73,7 +73,7 @@ class Elasticsearch extends AbstractDriver {
   /**
    * Remove the given model from the index.
    *
-   * @throws
+   * @async
    *
    * @param {Collection|Model} models
    *
@@ -90,26 +90,47 @@ class Elasticsearch extends AbstractDriver {
 
     const objectIds = _.map(models.rows, model => model.getSearchableKey())
 
-    await this.transporter.deleteBulk(index, objectIds)
+    return this.transporter.deleteBulk(index, objectIds)
   }
 
   /**
    * Perform the given search on the engine.
    *
-   * @throws
+   * @async
    *
    * @param {Builder} builder
    *
-   * @return {void}
+   * @return {Promise}
    */
-  async search (builder) {
+  search (builder) {
+    const { limit } = builder
+    return this._performSearch(builder, { limit })
+  }
+
+  /**
+   * Perform the given search on the engine.
+   *
+   * @async
+   *
+   * @param {Builder} builder
+   * @param {Object} options
+   *
+   * @return {Promise}
+   */
+  _performSearch (builder, options = {}) {
+    /**
+     * Defaults index name to `model.searchableAs()`
+     */
     const index = builder.index || builder.model.searchableAs()
 
-    await this.transporter.initIndex(index)
+    /**
+     * Build full query DSL.
+     */
+    const queryDSL = this._buildQueryDSL(builder, options)
 
-    const queryDSL = this._buildQueryDSL(builder)
-
-    return this.transporter.search(index, queryDSL)
+    return this.transporter.initIndex(index).then(() => {
+      return this.transporter.search(index, queryDSL)
+    })
   }
 
   /**
@@ -118,10 +139,13 @@ class Elasticsearch extends AbstractDriver {
    * @private
    *
    * @param {Builder} builder
+   * @param {Object} customOptions
    *
    * @return {Object}
    */
-  _buildQueryDSL (builder) {
+  _buildQueryDSL (builder, customOptions = {}) {
+    const options = Object.assign({ page: null, limit: null }, customOptions)
+
     // Uses the bodybuilder to help us build the query
     const queryBuilder = bodybuilder()
 
@@ -147,6 +171,12 @@ class Elasticsearch extends AbstractDriver {
 
     // build the aggregates
     this._buildAggregates(queryBuilder, builder.aggregates)
+
+    // build the from
+    this._buildFrom(queryBuilder, options.page, options.limit)
+
+    // build the size
+    this._buildSize(queryBuilder, options.limit)
 
     return queryBuilder.build()
   }
@@ -206,6 +236,34 @@ class Elasticsearch extends AbstractDriver {
   }
 
   /**
+   * Build the size part of the query.
+   *
+   * @param {bodybuilder} queryBuilder
+   * @param {Number} page
+   * @param {Number} limit
+   *
+   * @return {bodybuilder}
+   */
+  _buildFrom (queryBuilder, page, limit) {
+    if (!page || !limit) return
+    return queryBuilder.from((page - 1) * limit)
+  }
+
+  /**
+   * Build the size part of the query.
+   *
+   * @param {bodybuilder} queryBuilder
+   * @param {Number} size
+   *
+   * @return {bodybuilder}
+   */
+  _buildSize (queryBuilder, limit) {
+    if (!limit) return
+
+    return queryBuilder.size(limit)
+  }
+
+  /**
    * Performs the given raw search on the engine.
    *
    * @param {String} index Index
@@ -216,6 +274,20 @@ class Elasticsearch extends AbstractDriver {
   async searchRaw (index, queryObject) {
     await this.transporter.initIndex(index)
     return this.transporter.search(index, queryObject)
+  }
+
+  /**
+   * Perform the given search pagination on the engine.
+   *
+   * @async
+   *
+   * @param {Builder} builder
+   * @param {Number} page
+   *
+   * @return {void}
+   */
+  paginate (builder, page, limit) {
+    return this._performSearch(builder, { page, limit })
   }
 
   /**
@@ -248,7 +320,7 @@ class Elasticsearch extends AbstractDriver {
       return new Serializer([])
     }
 
-    const { total, hits } = results.hits
+    const hits = _.get(results, 'hits.hits', [])
 
     /**
      * Build array containing only the object ids

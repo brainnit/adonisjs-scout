@@ -2,7 +2,8 @@
 
 const { ioc } = require('@adonisjs/fold')
 const { Macroable } = require('macroable')
-const CE = require('../src/Exceptions')
+const LengthPaginator = require('./Paginators/LengthAwarePaginator')
+const CE = require('./Exceptions')
 
 /**
  * @typedef {import('@adonisjs/lucid/src/Lucid/Model')} Model
@@ -180,6 +181,51 @@ class Builder extends Macroable {
     })
 
     return queryArray
+  }
+
+  /**
+   * Paginate the given query into a simple paginator.
+   *
+   * @param {Number} [page = 1]
+   * @param {Number} [limit = 20]
+   *
+   * @return {*}
+   */
+  paginate (page = 1, limit = 10) {
+    /**
+     * Make sure `page` and `limit` are both integers.
+     */
+    if (!Number.isInteger(page) || !Number.isInteger(limit)) {
+      throw CE.InvalidArgumentException.invalidParameter(
+        `page|limit bust be an integer`
+      )
+    }
+
+    /**
+     * Override `this.limit` setting as `null`
+     */
+    this.limit(null)
+
+    // get the engine to paginate with
+    const engine = this.engine()
+
+    // paginate (query) the results
+    const results = engine.paginate(this, page, limit)
+
+    // get total count
+    const total = engine.getTotalCount(results)
+
+    return new LengthPaginator(results, total, page, limit)
+  }
+
+  /**
+   * Paginate the given query after the cursor (forward only).
+   *
+   * @param {String} cursor
+   * @param {Number} [limit = 20]
+   */
+  paginateAfter (cursor, limit = 10) {
+
   }
 
   /**

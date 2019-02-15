@@ -89,13 +89,28 @@ class AbstractDriver {
    * @throws
    *
    * @param {Builder} builder
-   * @param {Number} size
-   * @param {String} cursor
+   * @param {Number} page
+   * @param {Number} limit
    *
    * @return {void}
    */
-  paginate (builder, size, cursor) {
+  paginate (builder, page, limit) {
     throw CE.LogicalException.notImplementedMethod('paginate')
+  }
+
+  /**
+   * Perform the given search pagination on the engine.
+   *
+   * @throws
+   *
+   * @param {Builder} builder
+   * @param {String} cursor
+   * @param {Number} limit
+   *
+   * @return {void}
+   */
+  paginateAfter (builder, cursor, limit) {
+    throw CE.LogicalException.notImplementedMethod('paginateAfter')
   }
 
   /**
