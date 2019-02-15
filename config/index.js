@@ -55,7 +55,8 @@ module.exports = {
     },
     options: {
       apiVersion: '6.4'
-    }
+    },
+    debug: Env.get('ELASTICSEARCH_DEBUG', false)
   },
 
   /**

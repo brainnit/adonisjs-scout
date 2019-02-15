@@ -4,6 +4,7 @@ const AbstractDriver = require('./Abstract')
 const ElasticsearchClient = require('elasticsearch').Client
 const bodybuilder = require('bodybuilder')
 const _ = require('lodash')
+const debug = require('debug')('scout:elasticsearch')
 
 /**
  * @typedef {import('../Builder')} Builder
@@ -25,6 +26,10 @@ class Elasticsearch extends AbstractDriver {
    * @return {void}
    */
   setConfig (config = {}) {
+    // Toggle debugging
+    debug.enable = !!config.debug
+    debug('booting elasticsearch driver')
+
     this.config = config
     this.transporter = new ElasticsearchTransporter(this.config)
   }
@@ -348,16 +353,20 @@ class ElasticsearchTransporter {
    *
    * @throws
    *
-   * @param {String} name Index name
+   * @param {String} index
    * @param {Object} params Extra
    *
    * @return {Promise}
    */
-  async initIndex (name, params = {}) {
-    const exists = await this.Client.indices.exists({ index: name })
+  async initIndex (index, params = {}) {
+    const requestPayload = { index }
+
+    debug('Checking if index exists with %o', requestPayload)
+
+    const exists = await this.Client.indices.exists(requestPayload)
     const method = exists ? '_updateIndex' : '_createIndex'
 
-    return this[method](name, params)
+    return this[method](index, params)
   }
 
   /**
@@ -365,16 +374,18 @@ class ElasticsearchTransporter {
    *
    * @async
    *
-   * @param {String} name Index name
-   * @param {Object} params Extra
+   * @param {String} index
+   * @param {Object} params
    *
    * @return {Boolean}
    */
-  _createIndex (name, params = {}) {
+  _createIndex (index, params = {}) {
     const requestPayload = {
-      index: name,
+      index,
       body: { ...params }
     }
+
+    debug(`Creating index with %o`, requestPayload)
 
     return new Promise((resolve, reject) => {
       this.Client.indices.create(requestPayload, (error, result) => {
@@ -390,16 +401,18 @@ class ElasticsearchTransporter {
   /**
    * Updates the given search index.
    *
-   * @param {String} name Index name
-   * @param {Object} params Extra
+   * @param {String} index
+   * @param {Object} params
    *
    * @return {Boolean}
    */
-  _updateIndex (name, params = {}) {
+  _updateIndex (index, params = {}) {
     const requestPayload = {
-      index: name,
+      index,
       body: { ...params }
     }
+
+    debug(`Updating index with %o`, requestPayload)
 
     return new Promise((resolve, reject) => {
       this.Client.indices.upgrade(requestPayload, (error, result) => {
@@ -417,9 +430,9 @@ class ElasticsearchTransporter {
    *
    * @async
    *
-   * @param {String} index Index name
-   * @param {String} objectId Object uid
-   * @param {Object} objectData Object data
+   * @param {String} index
+   * @param {String} objectId
+   * @param {Object} objectData
    *
    * @return {Promise}
    */
@@ -430,6 +443,8 @@ class ElasticsearchTransporter {
       id: objectId,
       body: objectData
     }
+
+    debug(`Indexing with %o`, requestPayload)
 
     return new Promise((resolve, reject) => {
       this.Client.index(requestPayload, (error, result) => {
@@ -449,20 +464,24 @@ class ElasticsearchTransporter {
    *
    * @throws
    *
-   * @param {String} index Index name
-   * @param {Array} objectIds Object Ids to delete
+   * @param {String} index
+   * @param {Array} objectIds
    *
    * @return {Promise}
    */
   deleteBulk (index, objectIds) {
-    const bodyActions = objectIds.map(objectId => {
-      return {
-        delete: { _index: index, _type: '_doc', _id: objectId }
-      }
-    })
+    const requestPayload = {
+      body: objectIds.map(objectId => {
+        return {
+          delete: { _index: index, _type: '_doc', _id: objectId }
+        }
+      })
+    }
+
+    debug(`Removing from index with %o`, requestPayload)
 
     return new Promise((resolve, reject) => {
-      this.Client.bulk({ body: bodyActions }, (error, result) => {
+      this.Client.bulk(requestPayload, (error, result) => {
         if (error) {
           reject(error)
         } else {
@@ -481,8 +500,15 @@ class ElasticsearchTransporter {
    * @return {Promise}
    */
   search (index, queryDSL = {}) {
+    const requestPayload = {
+      index,
+      body: queryDSL
+    }
+
+    debug('Searching with %o', requestPayload)
+
     return new Promise((resolve, reject) => {
-      this.Client.search({ index, body: queryDSL }, (error, result) => {
+      this.Client.search(requestPayload, (error, result) => {
         if (error) {
           reject(error)
         } else {
@@ -511,6 +537,8 @@ class ElasticsearchTransporter {
       index: name,
       ...options
     }
+
+    debug('Flushing index with %o', requestPayload)
 
     return new Promise((resolve, reject) => {
       this.Client.indices.flush(requestPayload, (error, result) => {
