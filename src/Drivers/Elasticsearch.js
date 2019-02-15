@@ -10,10 +10,6 @@ const debug = require('debug')('scout:elasticsearch')
  * @typedef {import('../Builder')} Builder
  */
 
-/**
- * @typedef {import('bodybuilder')} bodybuilder
- */
-
 class Elasticsearch extends AbstractDriver {
   /**
    * This method is called by engine manager automatically
