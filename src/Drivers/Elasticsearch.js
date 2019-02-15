@@ -236,24 +236,24 @@ class Elasticsearch extends AbstractDriver {
   /**
    * Pluck and return the primary keys of the given results.
    *
-   * @throws
+   * @param {Object} results Query results
    *
-   * @param {Builder} builder
-   * @param {*} results
-   * @param {Model} model
-   *
-   * @return {Collection}
+   * @return {Array}
    */
-  mapIds (builder, results, model) {
-    throw Error
+  mapIds (results) {
+    if (_.isEmpty(results) || results.hits.total === 0) {
+      return []
+    }
+
+    return _.map(results.hits.hits, '_id')
   }
 
   /**
    * Map the given results to instances of the given model.
    *
-   * @throws
-   *
-   * @param {*} results
+   * @param {Builder} builder
+   * @param {Object} results Query results
+   * @param {Model} model
    *
    * @return {Collection}
    */

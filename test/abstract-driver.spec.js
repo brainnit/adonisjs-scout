@@ -24,24 +24,50 @@ describe('AbstractDriver', () => {
     expect(() => stubDriver.flush()).toThrow(LogicalException)
   })
 
-  it('get calls search and subsequently calls map with promise results', () => {
-    expect.assertions(4)
+  it('keys calls search and subsequently calls mapId with the results', () => {
+    expect.assertions(2)
 
     const stubDriver = new TestDriver()
-    jest.spyOn(stubDriver, 'get')
 
     const builder = jest.fn()
     builder.model = jest.fn()
 
+    const results = { foo: 'bar' }
+
     stubDriver.search = jest.fn(() => {
       return new Promise((resolve) => {
-        resolve([])
+        resolve(results)
+      })
+    })
+
+    stubDriver.mapIds = jest.fn((a) => {
+      expect(a).toEqual(results)
+    })
+
+    stubDriver.keys(builder)
+
+    expect(stubDriver.search).toHaveBeenCalledWith(builder)
+  })
+
+  it('get calls search and subsequently calls map with the results', () => {
+    expect.assertions(4)
+
+    const stubDriver = new TestDriver()
+
+    const builder = jest.fn()
+    builder.model = jest.fn()
+
+    const results = { foo: 'bar' }
+
+    stubDriver.search = jest.fn(() => {
+      return new Promise((resolve) => {
+        resolve(results)
       })
     })
 
     stubDriver.map = jest.fn((a, b, c) => {
       expect(a).toBe(builder)
-      expect(b).toEqual([])
+      expect(b).toEqual(results)
       expect(c).toBe(builder.model)
     })
 

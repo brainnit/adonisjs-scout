@@ -101,24 +101,20 @@ class AbstractDriver {
   /**
    * Pluck and return the primary keys of the given results.
    *
-   * @throws
-   *
-   * @param {Builder} builder
    * @param {*} results
-   * @param {Model} model
    *
    * @return {Collection}
    */
-  mapIds (builder, results, model) {
+  mapIds (results) {
     throw CE.LogicalException.notImplementedMethod('mapIds')
   }
 
   /**
    * Map the given results to instances of the given model.
    *
-   * @throws
-   *
+   * @param {Builder} builder
    * @param {*} results
+   * @param {Model} model
    *
    * @return {Collection}
    */
@@ -160,7 +156,9 @@ class AbstractDriver {
    * @return {Collection}
    */
   keys (builder) {
-    return this.mapIds(this.search(builder))
+    return this.search(builder).then(
+      results => this.mapIds(results)
+    )
   }
 
   /**
