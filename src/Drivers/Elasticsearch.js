@@ -219,21 +219,6 @@ class Elasticsearch extends AbstractDriver {
   }
 
   /**
-   * Perform the given search pagination on the engine.
-   *
-   * @throws
-   *
-   * @param {Builder} builder
-   * @param {Number} size
-   * @param {String} cursor
-   *
-   * @return {void}
-   */
-  paginate (builder, size, cursor) {
-    throw Error
-  }
-
-  /**
    * Pluck and return the primary keys of the given results.
    *
    * @param {Object} results Query results
@@ -241,7 +226,7 @@ class Elasticsearch extends AbstractDriver {
    * @return {Array}
    */
   mapIds (results) {
-    if (_.isEmpty(results) || results.hits.total === 0) {
+    if (_.get(results, 'hits.total', 0) === 0) {
       return []
     }
 
@@ -258,7 +243,7 @@ class Elasticsearch extends AbstractDriver {
    * @return {Collection}
    */
   map (builder, results, model) {
-    if (_.isEmpty(results) || results.hits.total === 0) {
+    if (_.get(results, 'hits.total', 0) === 0) {
       const Serializer = model.constructor.resolveSerializer()
       return new Serializer([])
     }
@@ -291,12 +276,12 @@ class Elasticsearch extends AbstractDriver {
    *
    * @throws
    *
-   * @param {*} results
+   * @param {*} results Query results
    *
    * @return {Number}
    */
   getTotalCount (results) {
-    throw Error
+    return _.get(results, 'hits.total', 0)
   }
 
   /**

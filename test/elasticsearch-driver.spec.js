@@ -267,6 +267,21 @@ describe('ElasticsearchDriver', () => {
 
     expect(map).toEqual(collection)
   })
+
+  it('getTotalCount returns total from results', () => {
+    const elasticsearch = new ElasticsearchDriver()
+
+    const results = {
+      'hits': {
+        'total': 9,
+        'hits': []
+      }
+    }
+
+    const total = elasticsearch.getTotalCount(results)
+
+    expect(total).toEqual(9)
+  })
 })
 
 describe('ElasticsearchTransport', () => {
