@@ -180,14 +180,6 @@ describe('Searchable', () => {
     const model = new ModelStub()
     expect(model.searchableUsing()).toBe(engineMock)
   })
-
-  it.skip('unsearchable removes model from the index', () => {
-    const model = new ModelStub()
-    ModelStub._bootIfNotBooted()
-    model.newUp({ id: 1 })
-    model.unsearchable()
-    expect(1).toBe(1)
-  })
 })
 
 class ModelStub extends Model {

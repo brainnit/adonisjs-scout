@@ -44,15 +44,25 @@ describe('ElasticsearchDriver', () => {
     expect(elasticsearch).toBeInstanceOf(ElasticsearchDriver)
   })
 
-  it.skip('update adds objects to index', () => {
-    const transporterMock = jest.fn()
-    transporterMock.initIndex = jest.fn()
-    transporterMock.index = jest.fn()
+  it('update adds objects to index', () => {
+    expect.assertions(4)
+
     const elasticsearch = new ElasticsearchDriver()
-    elasticsearch.transporter = transporterMock
+    elasticsearch.transporter = jest.fn()
+    elasticsearch.transporter.initIndex = jest.fn(() => {
+      return new Promise((resolve) => {
+        resolve(true)
+      })
+    })
+
+    elasticsearch.transporter.index = jest.fn((a, b, c) => {
+      expect(a).toEqual('table')
+      expect(b).toEqual('key1')
+      expect(c).toEqual({ foo: 'bar' })
+    })
 
     const modelMock = jest.fn()
-    modelMock.searchableAs = jest.fn(() => 'mocks')
+    modelMock.searchableAs = jest.fn(() => 'table')
     modelMock.getSearchableKey = jest.fn(() => 'key1')
     modelMock.toSearchableJSON = jest.fn(() => {
       return { foo: 'bar' }
@@ -61,34 +71,36 @@ describe('ElasticsearchDriver', () => {
     const collection = new VanillaSerializer([ modelMock ])
     elasticsearch.update(collection)
 
-    expect(transporterMock.initIndex).toHaveBeenCalledWith('mocks')
-    expect(transporterMock.index).toHaveBeenCalledWith(
-      'mocks', 'key1', { foo: 'bar' }
-    )
+    expect(elasticsearch.transporter.initIndex).toHaveBeenCalledWith('table')
   })
 
-  it.skip('delete remove objects from index', () => {
-    const transporterMock = jest.fn()
-    transporterMock.initIndex = jest.fn()
-    transporterMock.deleteBulk = jest.fn()
+  it('delete remove objects from index', () => {
+    expect.assertions(3)
+
     const elasticsearch = new ElasticsearchDriver()
-    elasticsearch.transporter = transporterMock
+    elasticsearch.transporter = jest.fn()
+    elasticsearch.transporter.initIndex = jest.fn(() => {
+      return new Promise(resolve => resolve(true))
+    })
+
+    elasticsearch.transporter.deleteBulk = jest.fn((a, b) => {
+      expect(a).toEqual('table')
+      expect(b).toEqual([ 'key1' ])
+    })
 
     const modelMock = jest.fn()
-    modelMock.searchableAs = jest.fn(() => 'mocks')
+    modelMock.searchableAs = jest.fn(() => 'table')
     modelMock.getSearchableKey = jest.fn(() => 'key1')
 
     const collection = new VanillaSerializer([ modelMock ])
     elasticsearch.delete(collection)
 
-    expect(transporterMock.initIndex).toHaveBeenCalledWith('mocks')
-    expect(transporterMock.deleteBulk).toHaveBeenCalledWith('mocks', [ 'key1' ])
+    expect(elasticsearch.transporter.initIndex).toHaveBeenCalledWith('table')
   })
 
   it('_buildQueryDSL builds full query', () => {
     const elasticsearch = new ElasticsearchDriver()
-    const builder = new Builder(jest.fn())
-    builder.query = 'zoo'
+    const builder = new Builder(jest.fn(), 'zoo')
     builder.where('foo', 'match', 'bar')
     builder.orderBy('foo', 'asc')
 
@@ -128,10 +140,9 @@ describe('ElasticsearchDriver', () => {
       'SearchRuleStub',
       'OtherSearchRuleStub'
     ])
-    const builder = new Builder(modelMock)
+    const builder = new Builder(modelMock, 'foobar')
     builder.rule('SearchRuleStub')
     builder.rule('OtherSearchRuleStub')
-    builder.query = 'foobar'
 
     const query = elasticsearch._buildQueryDSL(builder)
 
@@ -157,6 +168,44 @@ describe('ElasticsearchDriver', () => {
             }
           ]
         }
+      }
+    })
+  })
+
+  it('_buildQueryDSL query matches any field when builder has query', () => {
+    const elasticsearch = new ElasticsearchDriver()
+    const builder = new Builder(jest.fn(), 'foo')
+    const query = elasticsearch._buildQueryDSL(builder)
+
+    expect(query).toEqual({
+      query: {
+        query_string: {
+          query: 'foo'
+        }
+      }
+    })
+  })
+
+  it('_buildQueryDSL query matches all when builder has no query', () => {
+    const elasticsearch = new ElasticsearchDriver()
+    const builder = new Builder(jest.fn(), null)
+    const query = elasticsearch._buildQueryDSL(builder)
+
+    expect(query).toEqual({
+      query: {
+        match_all: {}
+      }
+    })
+  })
+
+  it('_buildQueryDSL query matches all when builder query is "*"', () => {
+    const elasticsearch = new ElasticsearchDriver()
+    const builder = new Builder(jest.fn(), '*')
+    const query = elasticsearch._buildQueryDSL(builder)
+
+    expect(query).toEqual({
+      query: {
+        match_all: {}
       }
     })
   })

@@ -130,7 +130,7 @@ class Elasticsearch extends AbstractDriver {
       builder.buildRules().forEach(query => {
         queryBuilder.query('bool', query)
       })
-    } else if (builder.query) {
+    } else if (builder.query && builder.query !== '*') {
       // Searches for `query` in any document field
       queryBuilder.query('query_string', 'query', builder.query)
     } else {

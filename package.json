@@ -29,8 +29,6 @@
   },
   "dependencies": {
     "@adonisjs/generic-exceptions": "^3.0.1",
-    "bodybuilder": "^2.2.16",
-    "debug": "^4.1.1",
     "lodash": "^4.17.11",
     "macroable": "^2.0.1"
   },
@@ -41,7 +39,6 @@
     "dotenv": "^6.2.0",
     "elasticsearch": "^15.4.1",
     "jest": "^24.1.0",
-    "jest-mock-promise": "^1.0.23",
     "nock": "^10.0.6",
     "sqlite3": "^4.0.6",
     "standard": "^12.0.1"
