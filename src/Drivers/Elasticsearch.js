@@ -180,7 +180,7 @@ class Elasticsearch extends AbstractDriver {
     if (!orders) return
 
     orders.forEach(order => {
-      queryBuilder.sort([order.field], order.direction)
+      queryBuilder.sort(order.field, order.direction)
     })
 
     return queryBuilder
