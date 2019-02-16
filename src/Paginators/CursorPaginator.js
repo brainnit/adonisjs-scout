@@ -1,39 +1,26 @@
 'use strict'
 
-const CE = require('./Exceptions')
-const { max, ceil } = require('lodash')
-const proxyMethods = [
-  'first',
-  'nth',
-  'last',
-  'size',
-  'toJSON'
-]
+const AbstractPaginator = require('./Abstract')
 
-class Paginator {
+class CursorPaginator extends AbstractPaginator {
   /**
    * Cria uma nova instância da paginação.
    *
    * @param {Collection} items
-   * @param {Number} currentPage
-   * @param {Number} perPage
    * @param {Number} total
+   * @param {String} cursor
+   * @param {Number} perPage
    */
-  constructor (items, total, currentPage, perPage) {
-    this.items = items
-    this.total = total
-    this.currentPage = currentPage
-    this.perPage = perPage
-    this.lastPage = max([1, ceil(total / perPage)])
+  constructor (items, total, cursor, perPage) {
+    /**
+     * Super constructor will set `items` and `total`
+     * under `this.$paginator` namespace.
+     */
+    super(items, total)
+
+    this.$paginator.cursor = cursor
+    this.$paginator.perPage = perPage
   }
-
-
 }
 
-proxyMethods.forEach(method => {
-  Paginator.prototype[method] = function (...params) {
-    return this.items[method](...params)
-  }
-})
-
-module.exports = Paginator
+module.exports = CursorPaginator

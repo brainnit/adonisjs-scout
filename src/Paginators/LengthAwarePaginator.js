@@ -8,14 +8,14 @@ class LengthAwarePaginator extends AbstractPaginator {
    * Cria uma nova instância da paginação.
    *
    * @param {Collection} items
+   * @param {Number} total
    * @param {Number} currentPage
    * @param {Number} perPage
-   * @param {Number} total
    */
   constructor (items, total, currentPage, perPage) {
     /**
-     * Super constructor will set items, total, currentPage,
-     * perPage and lastPage.
+     * Super constructor will set `items` and `total`
+     * under `this.$paginator` namespace.
      */
     super(items, total)
 
