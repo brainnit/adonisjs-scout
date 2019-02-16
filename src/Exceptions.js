@@ -53,9 +53,9 @@ class LogicalException extends GE.LogicalException {
 
   static notImplementedMethod (name) {
     return new this(
-      `Driver did not implement method ${name}`,
+      `Class did not implement method ${name}`,
       500,
-      'E_INVALID_PARAMETER',
+      'E_METHOD_NOT_IMPLEMENTED',
       this.repo
     )
   }

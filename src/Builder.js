@@ -2,6 +2,7 @@
 
 const { ioc } = require('@adonisjs/fold')
 const { Macroable } = require('macroable')
+const Promise = require('bluebird')
 const LengthPaginator = require('./Paginators/LengthAwarePaginator')
 const CE = require('./Exceptions')
 
@@ -103,6 +104,19 @@ class Builder extends Macroable {
   }
 
   /**
+   * Set the "limit" for the search query.
+   *
+   * @alias take
+   *
+   * @param {Number} limit
+   *
+   * @return {Builder} this
+   */
+  limit (limit) {
+    return this.take(limit)
+  }
+
+  /**
    * Add an "order" for the search query.
    *
    * @chainable
@@ -191,31 +205,29 @@ class Builder extends Macroable {
    *
    * @return {*}
    */
-  paginate (page = 1, limit = 10) {
+  paginate (page = 1, limit = 20) {
     /**
      * Make sure `page` and `limit` are both integers.
      */
-    if (!Number.isInteger(page) || !Number.isInteger(limit)) {
+    if (Number.isInteger(page) === false || Number.isInteger(limit) === false) {
       throw CE.InvalidArgumentException.invalidParameter(
-        `page|limit bust be an integer`
+        `Both page and limit must an integer`
       )
     }
 
-    /**
-     * Override `this.limit` setting as `null`
-     */
-    this.limit(null)
-
-    // get the engine to paginate with
+    this.take(null)
     const engine = this.engine()
 
-    // paginate (query) the results
-    const results = engine.paginate(this, page, limit)
-
-    // get total count
-    const total = engine.getTotalCount(results)
-
-    return new LengthPaginator(results, total, page, limit)
+    return engine.paginate(this, page, limit).then(
+      rawResults => {
+        return Promise.all([
+          engine.map(this, rawResults, this.model),
+          engine.getTotalCount(rawResults)
+        ]).spread((results, total) => {
+          return new LengthPaginator(results, total, page, limit)
+        })
+      }
+    )
   }
 
   /**
@@ -224,8 +236,8 @@ class Builder extends Macroable {
    * @param {String} cursor
    * @param {Number} [limit = 20]
    */
-  paginateAfter (cursor, limit = 10) {
-
+  paginateAfter (cursor, limit = 20) {
+    throw new Error('paginateAfter is not yet implemented')
   }
 
   /**

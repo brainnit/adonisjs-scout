@@ -168,7 +168,7 @@ class AbstractDriver {
    *
    * @param {Builder} builder
    *
-   * @return {Collection}
+   * @return {Promise}
    */
   keys (builder) {
     return this.search(builder).then(
@@ -181,7 +181,7 @@ class AbstractDriver {
    *
    * @param {Builder} builder
    *
-   * @return {Promise|Collection}
+   * @return {Promise}
    */
   get (builder) {
     return this.search(builder).then(

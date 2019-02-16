@@ -2,6 +2,7 @@
 
 const AbstractDriver = require('./Abstract')
 const ElasticsearchClient = require('elasticsearch').Client
+const Promise = require('bluebird')
 const bodybuilder = require('bodybuilder')
 const _ = require('lodash')
 const debug = require('debug')('scout:elasticsearch')
@@ -308,6 +309,8 @@ class Elasticsearch extends AbstractDriver {
   /**
    * Map the given results to instances of the given model.
    *
+   * @async
+   *
    * @param {Builder} builder
    * @param {Object} results Query results
    * @param {Model} model
@@ -330,17 +333,19 @@ class Elasticsearch extends AbstractDriver {
     /**
      * Search database through model class to find related models
      */
-    const collection = model.getScoutModelsByIds(builder, objectIds)
+    return model.getScoutModelsByIds(builder, objectIds).then(
+      collection => {
+        /**
+         * Filter collection.rows to return only the models matching one of
+         * the object ids returned from elasticsearch
+         */
+        collection.rows = _.filter(collection.rows, model => {
+          return objectIds.includes(model.getSearchableKey())
+        })
 
-    /**
-     * Filter collection.rows to return only the models matching one of
-     * the object ids returned from elasticsearch
-     */
-    collection.rows = _.filter(collection.rows, model => {
-      return objectIds.includes(model.getSearchableKey())
-    })
-
-    return collection
+        return collection
+      }
+    )
   }
 
   /**

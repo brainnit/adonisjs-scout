@@ -228,7 +228,7 @@ describe('ElasticsearchDriver', () => {
     expect(ids).toEqual(['foo', 'bar'])
   })
 
-  it('map correctly maps results to models', () => {
+  it('map correctly maps results to models', async () => {
     const elasticsearch = new ElasticsearchDriver()
 
     const results = {
@@ -258,12 +258,16 @@ describe('ElasticsearchDriver', () => {
 
     const collection = new VanillaSerializer([ resultModel ])
 
+    const promiseMock = new Promise(resolve => {
+      return resolve(collection)
+    })
+
     const modelMock = jest.fn()
     modelMock.getSearchableKey = jest.fn(() => 'yGKT6GgBcXAjfRQqBFTQ')
-    modelMock.getScoutModelsByIds = jest.fn(() => collection)
+    modelMock.getScoutModelsByIds = jest.fn(() => promiseMock)
 
     const builder = new Builder(modelMock)
-    const map = elasticsearch.map(builder, results, builder.model)
+    const map = await elasticsearch.map(builder, results, builder.model)
 
     expect(map).toEqual(collection)
   })
@@ -284,7 +288,6 @@ describe('ElasticsearchDriver', () => {
   })
 
   it('paginate correctly calls _performSearch and return its results', () => {
-
     const elasticsearch = new ElasticsearchDriver()
     const builder = jest.fn()
     const results = []
