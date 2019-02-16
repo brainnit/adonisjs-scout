@@ -89,36 +89,47 @@ class AbstractDriver {
    * @throws
    *
    * @param {Builder} builder
-   * @param {Number} size
-   * @param {String} cursor
+   * @param {Number} page
+   * @param {Number} limit
    *
    * @return {void}
    */
-  paginate (builder, size, cursor) {
+  paginate (builder, page, limit) {
     throw CE.LogicalException.notImplementedMethod('paginate')
+  }
+
+  /**
+   * Perform the given search pagination on the engine.
+   *
+   * @throws
+   *
+   * @param {Builder} builder
+   * @param {String} cursor
+   * @param {Number} limit
+   *
+   * @return {void}
+   */
+  paginateAfter (builder, cursor, limit) {
+    throw CE.LogicalException.notImplementedMethod('paginateAfter')
   }
 
   /**
    * Pluck and return the primary keys of the given results.
    *
-   * @throws
-   *
-   * @param {Builder} builder
    * @param {*} results
-   * @param {Model} model
    *
    * @return {Collection}
    */
-  mapIds (builder, results, model) {
+  mapIds (results) {
     throw CE.LogicalException.notImplementedMethod('mapIds')
   }
 
   /**
    * Map the given results to instances of the given model.
    *
-   * @throws
-   *
+   * @param {Builder} builder
    * @param {*} results
+   * @param {Model} model
    *
    * @return {Collection}
    */
@@ -157,10 +168,12 @@ class AbstractDriver {
    *
    * @param {Builder} builder
    *
-   * @return {Collection}
+   * @return {Promise}
    */
   keys (builder) {
-    return this.mapIds(this.search(builder))
+    return this.search(builder).then(
+      results => this.mapIds(results)
+    )
   }
 
   /**
@@ -168,7 +181,7 @@ class AbstractDriver {
    *
    * @param {Builder} builder
    *
-   * @return {Promise|Collection}
+   * @return {Promise}
    */
   get (builder) {
     return this.search(builder).then(

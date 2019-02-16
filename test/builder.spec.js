@@ -1,6 +1,7 @@
 'use strict'
 
 const Builder = require('../src/Builder')
+const VanillaSerializer = require('@adonisjs/lucid/src/Lucid/Serializers/Vanilla')
 
 describe('Builder', () => {
   it('is macroable', () => {
@@ -90,6 +91,31 @@ describe('Builder', () => {
 
     expect(builder.get()).toEqual('foo')
     expect(engineMock.get).toHaveBeenCalledWith(builder)
+  })
+
+  it('paginate correctly returns LengthPaginator with expected state', async () => {
+    const modelMock = jest.fn()
+    modelMock.searchableUsing = jest.fn(() => engineMock)
+
+    const results = new VanillaSerializer([ modelMock ])
+
+    const engineMock = jest.fn()
+
+    engineMock.paginate = jest.fn(() => {
+      return new Promise(resolve => resolve([]))
+    })
+
+    engineMock.map = jest.fn(() => results)
+
+    engineMock.getTotalCount = jest.fn(() => 99)
+
+    const builder = new Builder(modelMock)
+    const paginator = await builder.paginate()
+
+    expect(paginator.getCollection()).toBe(results)
+    expect(paginator.total).toEqual(99)
+    expect(paginator.currentPage).toEqual(1)
+    expect(paginator.perPage).toEqual(20)
   })
 
   it('engine is grabbed from model', () => {

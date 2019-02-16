@@ -2,7 +2,9 @@
 
 const { ioc } = require('@adonisjs/fold')
 const { Macroable } = require('macroable')
-const CE = require('../src/Exceptions')
+const Promise = require('bluebird')
+const LengthPaginator = require('./Paginators/LengthAwarePaginator')
+const CE = require('./Exceptions')
 
 /**
  * @typedef {import('@adonisjs/lucid/src/Lucid/Model')} Model
@@ -102,6 +104,19 @@ class Builder extends Macroable {
   }
 
   /**
+   * Set the "limit" for the search query.
+   *
+   * @alias take
+   *
+   * @param {Number} limit
+   *
+   * @return {Builder} this
+   */
+  limit (limit) {
+    return this.take(limit)
+  }
+
+  /**
    * Add an "order" for the search query.
    *
    * @chainable
@@ -180,6 +195,49 @@ class Builder extends Macroable {
     })
 
     return queryArray
+  }
+
+  /**
+   * Paginate the given query into a simple paginator.
+   *
+   * @param {Number} [page = 1]
+   * @param {Number} [limit = 20]
+   *
+   * @return {*}
+   */
+  paginate (page = 1, limit = 20) {
+    /**
+     * Make sure `page` and `limit` are both integers.
+     */
+    if (Number.isInteger(page) === false || Number.isInteger(limit) === false) {
+      throw CE.InvalidArgumentException.invalidParameter(
+        `Both page and limit must an integer`
+      )
+    }
+
+    this.take(null)
+    const engine = this.engine()
+
+    return engine.paginate(this, page, limit).then(
+      rawResults => {
+        return Promise.all([
+          engine.map(this, rawResults, this.model),
+          engine.getTotalCount(rawResults)
+        ]).spread((results, total) => {
+          return new LengthPaginator(results, total, page, limit)
+        })
+      }
+    )
+  }
+
+  /**
+   * Paginate the given query after the cursor (forward only).
+   *
+   * @param {String} cursor
+   * @param {Number} [limit = 20]
+   */
+  paginateAfter (cursor, limit = 20) {
+    throw new Error('paginateAfter is not yet implemented')
   }
 
   /**
