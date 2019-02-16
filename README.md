@@ -8,6 +8,7 @@ Use npm or yarn to install the package:
 
 ```sh
 npm -i @brainnit/adonisjs-scout
+# or
 yarn add @brainnit/adonisjs-scout
 ```
 
@@ -23,6 +24,14 @@ const providers = [
 ## Setup
 
 Copy `config/index.js` to your app config folder and name it `scout.js`. Don't forget to setup your environment variables.
+
+You may also need to install extra dependencies depending on the search engine driver you will be using. For instance, to use Elasticsearch you will need:
+
+```sh
+npm i --save elasticsearch bodybuilder
+# or
+yarn add elasticsearch bodybuilder
+```
 
 ## Usage
 
@@ -95,6 +104,7 @@ To tell Scout about what search rules your model supports, just add the followin
 ```
 ## Backlog
 
+- Move index create/update operations off from indexing methods (Elasticsearch) 
 - Add setup instructions
 - Add commands (searchable:flush, searchable:import, make:searchableModel, make:searchRule)
 - Add badges for npm version, build status, coverals
