@@ -341,11 +341,11 @@ describe('ElasticsearchDriver', () => {
     const elasticsearch = new ElasticsearchDriver()
     elasticsearch._performSearch = jest.fn(() => results)
 
-    const paginate = elasticsearch.paginateAfter(builder, 'foo', 20)
+    const paginate = elasticsearch.paginateAfter(builder, ['foo', 'bar'], 20)
 
     expect(paginate).toEqual(results)
     expect(elasticsearch._performSearch).toHaveBeenCalledWith(builder, {
-      after: 'foo',
+      after: ['foo', 'bar'],
       limit: 20
     })
   })

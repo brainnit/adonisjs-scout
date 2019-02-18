@@ -250,7 +250,7 @@ class Builder extends Macroable {
     this.take(null)
     const engine = this.engine()
 
-    const decodedCursor = CursorPaginator.decodeCursor(cursor)
+    const decodedCursor = cursor ? CursorPaginator.decodeCursor(cursor) : null
 
     return engine.paginateAfter(this, decodedCursor, limit + 1).then(
       rawResults => {

@@ -118,6 +118,35 @@ describe('Builder', () => {
     expect(paginator.perPage).toEqual(20)
   })
 
+  it('paginateAfter correctly returns CursorPaginator without cursor', async () => {
+    const modelMock = jest.fn()
+    modelMock.searchableUsing = jest.fn(() => engineMock)
+
+    const results = new VanillaSerializer([ modelMock ])
+
+    const engineMock = jest.fn()
+
+    engineMock.paginateAfter = jest.fn(() => {
+      return new Promise(resolve => resolve([]))
+    })
+
+    engineMock.map = jest.fn(() => results)
+
+    engineMock.getTotalCount = jest.fn(() => 99)
+
+    engineMock.cursors = jest.fn(() => ['id'])
+
+    const builder = new Builder(modelMock)
+    const paginator = await builder.paginateAfter()
+
+    expect(engineMock.paginateAfter).toHaveBeenCalledWith(builder, null, 21)
+
+    expect(paginator.getCollection()).toBe(results)
+    expect(paginator.total).toEqual(99)
+    expect(paginator.cursor).toBeNull()
+    expect(paginator.perPage).toEqual(20)
+  })
+
   it('engine is grabbed from model', () => {
     const modelMock = jest.fn()
     modelMock.searchableUsing = jest.fn(() => 'foo')
