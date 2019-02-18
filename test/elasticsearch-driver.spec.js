@@ -210,6 +210,37 @@ describe('ElasticsearchDriver', () => {
     })
   })
 
+  it('_buildQueryDSL correctly builds paginateAfter query', () => {
+    const elasticsearch = new ElasticsearchDriver()
+    const builder = new Builder(jest.fn())
+    builder.orderBy('foo', 'asc')
+    builder.orderBy('bar', 'desc')
+    const query = elasticsearch._buildQueryDSL(builder, {
+      after: ['a', 'b'],
+      limit: 20
+    })
+
+    expect(query).toEqual({
+      query: {
+        match_all: {}
+      },
+      sort: [
+        {
+          foo: {
+            order: 'asc'
+          }
+        },
+        {
+          bar: {
+            order: 'desc'
+          }
+        }
+      ],
+      size: 20,
+      search_after: ['a', 'b']
+    })
+  })
+
   it('mapIds returns array of object ids from results', () => {
     const elasticsearch = new ElasticsearchDriver()
 
@@ -288,9 +319,10 @@ describe('ElasticsearchDriver', () => {
   })
 
   it('paginate correctly calls _performSearch and return its results', () => {
-    const elasticsearch = new ElasticsearchDriver()
     const builder = jest.fn()
     const results = []
+
+    const elasticsearch = new ElasticsearchDriver()
     elasticsearch._performSearch = jest.fn(() => results)
 
     const paginate = elasticsearch.paginate(builder, 1, 20)
@@ -298,6 +330,22 @@ describe('ElasticsearchDriver', () => {
     expect(paginate).toEqual(results)
     expect(elasticsearch._performSearch).toHaveBeenCalledWith(builder, {
       page: 1,
+      limit: 20
+    })
+  })
+
+  it('paginateAfter correctly calls _performSearch and return its results', () => {
+    const builder = jest.fn()
+    const results = []
+
+    const elasticsearch = new ElasticsearchDriver()
+    elasticsearch._performSearch = jest.fn(() => results)
+
+    const paginate = elasticsearch.paginateAfter(builder, 'foo', 20)
+
+    expect(paginate).toEqual(results)
+    expect(elasticsearch._performSearch).toHaveBeenCalledWith(builder, {
+      after: 'foo',
       limit: 20
     })
   })

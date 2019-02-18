@@ -224,6 +224,22 @@ class Searchable {
 
       return query.whereIn(Model.getSearchableKeyName(), ids).fetch()
     }
+
+    /**
+     * Get the cursor for the model instance, needed for the `CursorPaginator`.
+     *
+     * @method getSearchableCursor
+     *
+     * @instance
+     *
+     * @param {Builder} builder
+     * @param {Array} columns
+     *
+     * @return {Array}
+     */
+    Model.prototype.getSearchableCursor = function (columns) {
+      return columns.map(column => this[column])
+    }
   }
 
   /**

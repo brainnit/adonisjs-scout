@@ -75,4 +75,18 @@ describe('AbstractDriver', () => {
 
     expect(stubDriver.search).toHaveBeenCalledWith(builder)
   })
+
+  it('cursors returns all columns being ordered', () => {
+    const builder = jest.fn()
+    builder.model = jest.fn()
+    builder.orders = [
+      { field: 'foo', direction: 'asc' },
+      { field: 'bar', direction: 'desc' }
+    ]
+
+    const stubDriver = new TestDriver()
+    const cursors = stubDriver.cursors(builder)
+
+    expect(cursors).toEqual(['foo', 'bar'])
+  })
 })

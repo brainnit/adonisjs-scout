@@ -188,6 +188,19 @@ class AbstractDriver {
       results => this.map(builder, results, builder.model)
     )
   }
+
+  /**
+   * Get cursor columns for the given query.
+   *
+   * @throws
+   *
+   * @param {Builder} builder
+   *
+   * @return {Array}
+   */
+  cursors (builder) {
+    return builder.orders.map(order => order.field)
+  }
 }
 
 module.exports = AbstractDriver

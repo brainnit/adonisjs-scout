@@ -179,6 +179,9 @@ class Elasticsearch extends AbstractDriver {
     // build the size
     this._buildSize(queryBuilder, options.limit)
 
+    // build the search after
+    this._buildAfter(queryBuilder, options.after)
+
     return queryBuilder.build()
   }
 
@@ -247,6 +250,7 @@ class Elasticsearch extends AbstractDriver {
    */
   _buildFrom (queryBuilder, page, limit) {
     if (!page || !limit) return
+
     return queryBuilder.from((page - 1) * limit)
   }
 
@@ -265,6 +269,20 @@ class Elasticsearch extends AbstractDriver {
   }
 
   /**
+   * Build the search after part of the query.
+   *
+   * @param {bodybuilder} queryBuilder
+   * @param {*} after cursor
+   *
+   * @return {bodybuilder}
+   */
+  _buildAfter (queryBuilder, after) {
+    if (!after) return
+
+    return queryBuilder.rawOption('search_after', after)
+  }
+
+  /**
    * Performs the given raw search on the engine.
    *
    * @param {String} index Index
@@ -274,6 +292,7 @@ class Elasticsearch extends AbstractDriver {
    */
   async searchRaw (index, queryObject) {
     await this.transporter.initIndex(index)
+
     return this.transporter.search(index, queryObject)
   }
 
@@ -289,6 +308,20 @@ class Elasticsearch extends AbstractDriver {
    */
   paginate (builder, page, limit) {
     return this._performSearch(builder, { page, limit })
+  }
+
+  /**
+   * Perform the given search pagination on the engine.
+   *
+   * @async
+   *
+   * @param {Builder} builder
+   * @param {*} after cursor
+   *
+   * @return {void}
+   */
+  paginateAfter (builder, after, limit) {
+    return this._performSearch(builder, { after, limit })
   }
 
   /**

@@ -180,6 +180,14 @@ describe('Searchable', () => {
     const model = new ModelStub()
     expect(model.searchableUsing()).toBe(engineMock)
   })
+
+  it('getSearchableCursor correctly returns model cursor', () => {
+    const model = new ModelStub()
+    model.a = 'foo'
+    model.b = 'bar'
+
+    expect(model.getSearchableCursor(['a', 'b'])).toEqual(['foo', 'bar'])
+  })
 })
 
 class ModelStub extends Model {
