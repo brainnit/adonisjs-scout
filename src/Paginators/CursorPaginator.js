@@ -142,7 +142,9 @@ class CursorPaginator extends AbstractPaginator {
   toEdgesJSON () {
     return this.items.map(modelInstance => ({
       node: this.getCollection()._getRowJSON(modelInstance),
-      cursor: this.constructor.encodeCursor(modelInstance.getSearchableCursor())
+      cursor: this.constructor.encodeCursor(
+        modelInstance.getSearchableCursor(this.cursorColumns)
+      )
     }))
   }
 

@@ -250,6 +250,14 @@ class Builder extends Macroable {
     this.take(null)
     const engine = this.engine()
 
+    /**
+     * Enforce default sorting if none given.
+     * This is required to build cursors and be prepared for pagination.
+     */
+    if (this.orders.length === 0) {
+      this.orderBy(this.model.constructor.getSearchableKeyName())
+    }
+
     const decodedCursor = cursor ? CursorPaginator.decodeCursor(cursor) : null
 
     return engine.paginateAfter(this, decodedCursor, limit + 1).then(
