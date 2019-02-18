@@ -4,6 +4,7 @@ const { ioc } = require('@adonisjs/fold')
 const { Macroable } = require('macroable')
 const Promise = require('bluebird')
 const LengthPaginator = require('./Paginators/LengthAwarePaginator')
+const CursorPaginator = require('./Paginators/CursorPaginator')
 const CE = require('./Exceptions')
 
 /**
@@ -231,13 +232,39 @@ class Builder extends Macroable {
   }
 
   /**
-   * Paginate the given query after the cursor (forward only).
+   * Paginate the given query after the given cursor (forward only).
    *
-   * @param {String} cursor
+   * @param {String} cursor (opaque)
    * @param {Number} [limit = 20]
    */
-  paginateAfter (cursor, limit = 20) {
-    throw new Error('paginateAfter is not yet implemented')
+  paginateAfter (cursor = null, limit = 20) {
+    /**
+     * Make sure `limit` is integer.
+     */
+    if (Number.isInteger(limit) === false) {
+      throw CE.InvalidArgumentException.invalidParameter(
+        `Limit must an integer`
+      )
+    }
+
+    this.take(null)
+    const engine = this.engine()
+
+    const decodedCursor = CursorPaginator.decodeCursor(cursor)
+
+    return engine.paginateAfter(this, decodedCursor, limit + 1).then(
+      rawResults => {
+        return Promise.all([
+          engine.map(this, rawResults, this.model),
+          engine.getTotalCount(rawResults),
+          engine.cursors(this)
+        ]).spread((results, total, cursorColumns) => {
+          const paginator = new CursorPaginator(results, total, cursor, limit)
+          paginator.setCursorColumns(cursorColumns)
+          return paginator
+        })
+      }
+    )
   }
 
   /**

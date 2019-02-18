@@ -9,8 +9,6 @@ class AbstractPaginator {
    * @throws TypeError
    *
    * @param {Collection} items
-   * @param {Number} currentPage
-   * @param {Number} perPage
    * @param {Number} total
    */
   constructor (items, total) {

@@ -1,6 +1,6 @@
 {
   "name": "@brainnit/adonisjs-scout",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Adonis Scout provides a driver based solution for searching your Lucid models, just like Laravel Scout.",
   "keywords": [
     "adonis",
@@ -31,6 +31,7 @@
     "@adonisjs/generic-exceptions": "^3.0.1",
     "bluebird": "^3.5.3",
     "debug": "^4.1.1",
+    "js-base64": "^2.5.1",
     "lodash": "^4.17.11",
     "macroable": "^2.0.1"
   },
