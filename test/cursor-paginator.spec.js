@@ -84,9 +84,15 @@ describe('LengthAwarePaginator', () => {
   })
 
   it('toJSON correctly returns paginator totalCount, pageInfo and data', () => {
+    expect.assertions(4)
+
     const modelMock = jest.fn()
     modelMock.toObject = jest.fn(() => ({ foo: 'bar' }))
-    modelMock.getSearchableCursor = jest.fn(() => ['foo', 'bar'])
+    modelMock.getSearchableCursor = jest.fn((columns) => {
+      // will be called 3 times
+      expect(columns).toEqual([])
+      return ['foo', 'bar']
+    })
 
     const items = new VanillaSerializer([ modelMock ])
     const paginator = new CursorPaginator(items, 9, null, 10)

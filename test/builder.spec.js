@@ -121,6 +121,7 @@ describe('Builder', () => {
   it('paginateAfter correctly returns CursorPaginator without cursor', async () => {
     const modelMock = jest.fn()
     modelMock.searchableUsing = jest.fn(() => engineMock)
+    modelMock.constructor.getSearchableKeyName = jest.fn(() => 'id')
 
     const results = new VanillaSerializer([ modelMock ])
 

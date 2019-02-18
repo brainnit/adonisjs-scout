@@ -188,6 +188,11 @@ describe('Searchable', () => {
 
     expect(model.getSearchableCursor(['a', 'b'])).toEqual(['foo', 'bar'])
   })
+
+  it('getSearchableCursor returns empty array if given empty columns', () => {
+    const model = new ModelStub()
+    expect(model.getSearchableCursor([])).toEqual([])
+  })
 })
 
 class ModelStub extends Model {
