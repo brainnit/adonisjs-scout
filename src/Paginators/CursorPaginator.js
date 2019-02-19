@@ -96,6 +96,10 @@ class CursorPaginator extends AbstractPaginator {
    * @return {String}
    */
   startCursor () {
+    if (!this.count()) {
+      return null
+    }
+
     return this.constructor.encodeCursor(
       this.getCollection().first().getSearchableCursor(this.cursorColumns)
     )
@@ -107,6 +111,10 @@ class CursorPaginator extends AbstractPaginator {
    * @return {String}
    */
   endCursor () {
+    if (!this.count()) {
+      return null
+    }
+
     return this.constructor.encodeCursor(
       this.getCollection().last().getSearchableCursor(this.cursorColumns)
     )
