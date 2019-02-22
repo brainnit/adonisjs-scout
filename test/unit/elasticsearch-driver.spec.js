@@ -4,12 +4,12 @@ require('dotenv').load()
 require('@adonisjs/lucid/lib/iocResolver').setFold(require('@adonisjs/fold'))
 const { ioc } = require('@adonisjs/fold')
 const { setupResolver } = require('@adonisjs/sink')
-const AbstractDriver = require('../src/Drivers/Abstract')
-const ElasticsearchDriver = require('../src/Drivers').elasticsearch
+const AbstractDriver = require('../../src/Drivers/Abstract')
+const ElasticsearchDriver = require('../../src/Drivers').elasticsearch
 const VanillaSerializer = require('@adonisjs/lucid/src/Lucid/Serializers/Vanilla')
 const Model = require('@adonisjs/lucid/src/Lucid/Model')
-const Builder = require('../src/Builder')
-const SearchRule = require('../src/SearchRule')
+const Builder = require('../../src/Builder')
+const SearchRule = require('../../src/SearchRule')
 const nock = require('nock')
 const bodybuilder = require('bodybuilder')
 
@@ -18,7 +18,7 @@ beforeAll(() => {
   ioc.alias('Adonis/Src/Model', 'Model')
 
   ioc.bind('Adonis/Traits/Searchable', () => {
-    const Searchable = require('../src/Searchable')
+    const Searchable = require('../../src/Searchable')
     return new Searchable()
   })
   ioc.alias('Adonis/Traits/Searchable', 'Searchable')
@@ -380,29 +380,29 @@ describe('ElasticsearchTransport', () => {
     transporter.makeClient(clientStub)
   })
 
-  it('initIndex calls _createIndex if given index does not exist', async () => {
+  it('initIndex calls createIndex if given index does not exist', async () => {
     const transporter = new ElasticsearchDriver.Transport(config)
     transporter.Client.indices.exists = jest.fn(() => false)
-    transporter._createIndex = jest.fn(() => true)
+    transporter.createIndex = jest.fn(() => true)
     expect(await transporter.initIndex('foo')).toBe(true)
     expect(transporter.Client.indices.exists).toHaveBeenCalledWith({
       index: 'foo'
     })
-    expect(transporter._createIndex).toHaveBeenCalledWith('foo', {})
+    expect(transporter.createIndex).toHaveBeenCalledWith('foo', {})
   })
 
-  it('initIndex calls _updateIndex if given index already exist', async () => {
+  it('initIndex calls updateIndex if given index already exist', async () => {
     const transporter = new ElasticsearchDriver.Transport(config)
     transporter.Client.indices.exists = jest.fn(() => true)
-    transporter._updateIndex = jest.fn(() => true)
+    transporter.updateIndex = jest.fn(() => true)
     expect(await transporter.initIndex('foo')).toBe(true)
     expect(transporter.Client.indices.exists).toHaveBeenCalledWith({
       index: 'foo'
     })
-    expect(transporter._updateIndex).toHaveBeenCalledWith('foo', {})
+    expect(transporter.updateIndex).toHaveBeenCalledWith('foo', {})
   })
 
-  it('_createIndex creates a new index', async () => {
+  it('createIndex creates a new index', async () => {
     const transporter = new ElasticsearchDriver.Transport(config)
     jest.spyOn(transporter.Client.indices, 'create')
 
@@ -412,7 +412,7 @@ describe('ElasticsearchTransport', () => {
         'acknowledged': true
       })
 
-    await transporter._createIndex('users', { foo: 'bar' })
+    await transporter.createIndex('users', { foo: 'bar' })
 
     expect(transporter.Client.indices.create).toHaveBeenCalledWith({
       index: 'users',
@@ -424,7 +424,7 @@ describe('ElasticsearchTransport', () => {
     nock.removeInterceptor(interceptor)
   })
 
-  it('_createIndex updates an existing index', async () => {
+  it('updateIndex updates an existing index', async () => {
     const transporter = new ElasticsearchDriver.Transport(config)
     jest.spyOn(transporter.Client.indices, 'upgrade')
 
@@ -434,7 +434,7 @@ describe('ElasticsearchTransport', () => {
         'acknowledged': true
       })
 
-    await transporter._updateIndex('users', { foo: 'bar' })
+    await transporter.updateIndex('users', { foo: 'bar' })
 
     expect(transporter.Client.indices.upgrade).toHaveBeenCalledWith({
       index: 'users',

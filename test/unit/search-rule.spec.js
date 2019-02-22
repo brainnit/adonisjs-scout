@@ -1,7 +1,7 @@
 'use strict'
 
-const SearchRule = require('../src/SearchRule')
-const { LogicalException } = require('../src/Exceptions')
+const SearchRule = require('../../src/SearchRule')
+const { LogicalException } = require('../../src/Exceptions')
 
 describe('SearchRule', () => {
   it('throws exception if constructed', () => {

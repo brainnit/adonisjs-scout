@@ -2,7 +2,7 @@
 
 const { ioc } = require('@adonisjs/fold')
 const { Config, Env, setupResolver } = require('@adonisjs/sink')
-const ScoutProvider = require('../providers/ScoutProvider')
+const ScoutProvider = require('../../providers/ScoutProvider')
 
 beforeAll(() => {
   ioc.singleton('Adonis/Src/Env', () => new Env())
@@ -10,7 +10,7 @@ beforeAll(() => {
 
   ioc.singleton('Adonis/Src/Config', function () {
     const config = new Config()
-    config.set('scout', require('../config'))
+    config.set('scout', require('../../config'))
     return config
   })
   ioc.alias('Adonis/Src/Config', 'Config')
@@ -22,25 +22,25 @@ beforeAll(() => {
 
 describe('ScoutProvider', () => {
   it('Scout should be registered just fine', () => {
-    const Scout = require('../src/Scout')
+    const Scout = require('../../src/Scout')
     expect(ioc.use('Adonis/Addons/Scout')).toBeInstanceOf(Scout)
     expect(ioc.use('Scout')).toBeInstanceOf(Scout)
   })
 
   it('Searchable should be registered just fine', () => {
-    const Searchable = require('../src/Searchable')
+    const Searchable = require('../../src/Searchable')
     expect(ioc.use('Adonis/Traits/Searchable')).toBeInstanceOf(Searchable)
     expect(ioc.use('Searchable')).toBeInstanceOf(Searchable)
   })
 
   it('SearchRule should be registered just fine', () => {
-    const SearchRule = require('../src/SearchRule')
+    const SearchRule = require('../../src/SearchRule')
     expect(ioc.use('Adonis/Addons/Scout/SearchRule')).toEqual(SearchRule)
     expect(ioc.use('Scout/SearchRule')).toEqual(SearchRule)
   })
 
   it('Scout should call engine manager to extend drivers', () => {
-    const Scout = require('../src/Scout')
+    const Scout = require('../../src/Scout')
     const configMock = jest.fn()
     const managerMock = jest.fn()
     managerMock.extend = jest.fn()

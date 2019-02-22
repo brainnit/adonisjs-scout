@@ -455,7 +455,7 @@ class ElasticsearchTransporter {
     debug('Checking if index exists with %o', requestPayload)
 
     const exists = await this.Client.indices.exists(requestPayload)
-    const method = exists ? '_updateIndex' : '_createIndex'
+    const method = exists ? 'updateIndex' : 'createIndex'
 
     return this[method](index, params)
   }
@@ -470,7 +470,7 @@ class ElasticsearchTransporter {
    *
    * @return {Boolean}
    */
-  _createIndex (index, params = {}) {
+  createIndex (index, params = {}) {
     const requestPayload = {
       index,
       body: { ...params }
@@ -497,7 +497,7 @@ class ElasticsearchTransporter {
    *
    * @return {Boolean}
    */
-  _updateIndex (index, params = {}) {
+  updateIndex (index, params = {}) {
     const requestPayload = {
       index,
       body: { ...params }

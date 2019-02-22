@@ -1,6 +1,6 @@
 'use strict'
 
-const ModelHook = require('../src/ModelHook')
+const ModelHook = require('../../src/ModelHook')
 
 describe('ModelHook', () => {
   it('makes model searchable when saved if should be searchable', () => {

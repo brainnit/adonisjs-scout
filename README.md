@@ -17,7 +17,8 @@ Add Scout to the list of service providers at `start/app.js`:
 ```js
 const providers = [
   // ...
-  '@brainnit/adonisjs-scout/providers/ScoutProvider'
+  '@brainnit/adonisjs-scout/providers/ScoutProvider',
+  '@brainnit/adonisjs-scout/providers/IndexKeeperProvider'
 ];
 ```
 

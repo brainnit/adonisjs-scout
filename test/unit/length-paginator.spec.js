@@ -1,6 +1,6 @@
 'use strict'
 
-const LengthPaginator = require('../src/Paginators/LengthAwarePaginator')
+const LengthPaginator = require('../../src/Paginators/LengthAwarePaginator')
 const VanillaSerializer = require('@adonisjs/lucid/src/Lucid/Serializers/Vanilla')
 
 describe('LengthAwarePaginator', () => {

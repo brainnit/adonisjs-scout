@@ -1,7 +1,7 @@
 'use strict'
 
-const EngineManager = require('../src/Manager')
-const NullDriver = require('../src/Drivers').null
+const EngineManager = require('../../src/Manager')
+const NullDriver = require('../../src/Drivers').null
 
 describe('EngineManager', () => {
   it('throw exception when invalid driver name is passed', () => {
