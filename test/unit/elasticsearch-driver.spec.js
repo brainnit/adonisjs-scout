@@ -548,10 +548,10 @@ describe('ElasticsearchTransport', () => {
 
   it('flushIndex flushes the index', async () => {
     const transporter = new ElasticsearchDriver.Transport(config)
-    jest.spyOn(transporter.Client.indices, 'flush')
+    jest.spyOn(transporter.Client, 'deleteByQuery')
 
     const interceptor = nock('http://localhost:9200')
-      .post('/users/_flush?force=true')
+      .post('/users/_delete_by_query')
       .reply(200, {
         '_shards': {
           'total': 1,
@@ -562,9 +562,13 @@ describe('ElasticsearchTransport', () => {
 
     await transporter.flushIndex('users')
 
-    expect(transporter.Client.indices.flush).toHaveBeenCalledWith({
+    expect(transporter.Client.deleteByQuery).toHaveBeenCalledWith({
       index: 'users',
-      force: true
+      body: {
+        query: {
+          match_all: {}
+        }
+      }
     }, expect.anything())
 
     nock.removeInterceptor(interceptor)

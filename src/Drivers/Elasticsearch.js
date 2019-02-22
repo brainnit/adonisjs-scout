@@ -4,7 +4,7 @@ const AbstractDriver = require('./Abstract')
 const ElasticsearchClient = require('elasticsearch').Client
 const Promise = require('bluebird')
 const bodybuilder = require('bodybuilder')
-const _ = require('lodash')
+const { get, map, filter, chunck } = require('lodash')
 const debug = require('debug')('scout:elasticsearch')
 
 /**
@@ -89,7 +89,7 @@ class Elasticsearch extends AbstractDriver {
 
     await this.transporter.initIndex(index)
 
-    const objectIds = _.map(models.rows, model => model.getSearchableKey())
+    const objectIds = map(models.rows, model => model.getSearchableKey())
 
     return this.transporter.deleteBulk(index, objectIds)
   }
@@ -332,11 +332,11 @@ class Elasticsearch extends AbstractDriver {
    * @return {Array}
    */
   mapIds (results) {
-    if (_.get(results, 'hits.total', 0) === 0) {
+    if (get(results, 'hits.total', 0) === 0) {
       return []
     }
 
-    return _.map(results.hits.hits, '_id')
+    return map(results.hits.hits, '_id')
   }
 
   /**
@@ -351,17 +351,17 @@ class Elasticsearch extends AbstractDriver {
    * @return {Collection}
    */
   map (builder, results, model) {
-    if (_.get(results, 'hits.total', 0) === 0) {
+    if (get(results, 'hits.total', 0) === 0) {
       const Serializer = model.constructor.resolveSerializer()
       return new Serializer([])
     }
 
-    const hits = _.get(results, 'hits.hits', [])
+    const hits = get(results, 'hits.hits', [])
 
     /**
      * Build array containing only the object ids
      */
-    const objectIds = _.map(hits, '_id')
+    const objectIds = map(hits, '_id')
 
     /**
      * Search database through model class to find related models
@@ -372,7 +372,7 @@ class Elasticsearch extends AbstractDriver {
          * Filter collection.rows to return only the models matching one of
          * the object ids returned from elasticsearch
          */
-        collection.rows = _.filter(collection.rows, model => {
+        collection.rows = filter(collection.rows, model => {
           return objectIds.includes(model.getSearchableKey())
         })
 
@@ -391,7 +391,7 @@ class Elasticsearch extends AbstractDriver {
    * @return {Number}
    */
   getTotalCount (results) {
-    return _.get(results, 'hits.total', 0)
+    return get(results, 'hits.total', 0)
   }
 
   /**
@@ -622,17 +622,20 @@ class ElasticsearchTransporter {
    * @return {Promise}
    */
   flushIndex (name, customOptions = {}) {
-    const options = Object.assign({ force: true }, customOptions)
-
     const requestPayload = {
       index: name,
-      ...options
+      ...customOptions,
+      body: {
+        query: {
+          match_all: {}
+        }
+      }
     }
 
     debug('Flushing index with %o', requestPayload)
 
     return new Promise((resolve, reject) => {
-      this.Client.indices.flush(requestPayload, (error, result) => {
+      this.Client.deleteByQuery(requestPayload, (error, result) => {
         if (error) {
           reject(error)
         } else {
