@@ -4,7 +4,7 @@ const AbstractDriver = require('./Abstract')
 const ElasticsearchClient = require('elasticsearch').Client
 const Promise = require('bluebird')
 const bodybuilder = require('bodybuilder')
-const _ = require('lodash')
+const { get, map, filter, chunck, isArray } = require('lodash')
 const debug = require('debug')('scout:elasticsearch')
 
 /**
@@ -36,38 +36,34 @@ class Elasticsearch extends AbstractDriver {
    *
    * @async
    *
-   * @param {Collection|Model} model
+   * @param {Collection|Model} models
    *
    * @return {void}
    */
-  async update (model) {
-    if (!model) {
+  async update (models) {
+    if (!models) {
       return
     }
 
-    /**
-     * If models is array, dispatch update for each one of them
-     */
-    if (Array.isArray(model.rows)) {
-      model.rows.forEach(modelInstance => {
-        this.update(modelInstance)
-      })
-      return
-    }
+    models = Array.isArray(models.rows) ? models.rows : [models]
+
+    const index = models[0].searchableAs()
 
     /**
      * Initializes search index for the given model, if needed
      */
-    await this.transporter.initIndex(model.searchableAs())
+    await this.transporter.initIndex(index)
 
     /**
-     * Save serialized model to the search engine, using the result
+     * Save serialized models to the search engine, using the result
      * from `model.getSearchableKey()` as object id.
      */
-    return this.transporter.index(
-      model.searchableAs(),
-      model.getSearchableKey(),
-      model.toSearchableJSON()
+    return this.transporter.indexBulk(
+      index,
+      models.map(model => ({
+        id: model.getSearchableKey(),
+        data: model.toSearchableJSON()
+      }))
     )
   }
 
@@ -89,7 +85,7 @@ class Elasticsearch extends AbstractDriver {
 
     await this.transporter.initIndex(index)
 
-    const objectIds = _.map(models.rows, model => model.getSearchableKey())
+    const objectIds = map(models.rows, model => model.getSearchableKey())
 
     return this.transporter.deleteBulk(index, objectIds)
   }
@@ -332,11 +328,11 @@ class Elasticsearch extends AbstractDriver {
    * @return {Array}
    */
   mapIds (results) {
-    if (_.get(results, 'hits.total', 0) === 0) {
+    if (get(results, 'hits.total', 0) === 0) {
       return []
     }
 
-    return _.map(results.hits.hits, '_id')
+    return map(results.hits.hits, '_id')
   }
 
   /**
@@ -351,17 +347,17 @@ class Elasticsearch extends AbstractDriver {
    * @return {Collection}
    */
   map (builder, results, model) {
-    if (_.get(results, 'hits.total', 0) === 0) {
+    if (get(results, 'hits.total', 0) === 0) {
       const Serializer = model.constructor.resolveSerializer()
       return new Serializer([])
     }
 
-    const hits = _.get(results, 'hits.hits', [])
+    const hits = get(results, 'hits.hits', [])
 
     /**
      * Build array containing only the object ids
      */
-    const objectIds = _.map(hits, '_id')
+    const objectIds = map(hits, '_id')
 
     /**
      * Search database through model class to find related models
@@ -372,7 +368,7 @@ class Elasticsearch extends AbstractDriver {
          * Filter collection.rows to return only the models matching one of
          * the object ids returned from elasticsearch
          */
-        collection.rows = _.filter(collection.rows, model => {
+        collection.rows = filter(collection.rows, model => {
           return objectIds.includes(model.getSearchableKey())
         })
 
@@ -391,7 +387,7 @@ class Elasticsearch extends AbstractDriver {
    * @return {Number}
    */
   getTotalCount (results) {
-    return _.get(results, 'hits.total', 0)
+    return get(results, 'hits.total', 0)
   }
 
   /**
@@ -517,28 +513,30 @@ class ElasticsearchTransporter {
   }
 
   /**
-   * Add an object to Elasticsearch index.
+   * Add/Update objects to Elasticsearch index.
    *
    * @async
    *
+   * @throws
+   *
    * @param {String} index
-   * @param {String} objectId
-   * @param {Object} objectData
+   * @param {Array} objects
    *
    * @return {Promise}
    */
-  index (index, objectId, objectData) {
-    const requestPayload = {
-      index,
-      type: '_doc',
-      id: objectId,
-      body: objectData
-    }
+  indexBulk (index, objects) {
+    const requestPayload = { body: [] }
+    objects.forEach(object => {
+      requestPayload.body.push(
+        { index: { _index: index, _type: '_doc', _id: object.id } },
+        object.data
+      )
+    })
 
-    debug(`Indexing with %o`, requestPayload)
+    debug(`Removing from index with %o`, requestPayload)
 
     return new Promise((resolve, reject) => {
-      this.Client.index(requestPayload, (error, result) => {
+      this.Client.bulk(requestPayload, (error, result) => {
         if (error) {
           reject(error)
         } else {
@@ -622,17 +620,20 @@ class ElasticsearchTransporter {
    * @return {Promise}
    */
   flushIndex (name, customOptions = {}) {
-    const options = Object.assign({ force: true }, customOptions)
-
     const requestPayload = {
       index: name,
-      ...options
+      ...customOptions,
+      body: {
+        query: {
+          match_all: {}
+        }
+      }
     }
 
     debug('Flushing index with %o', requestPayload)
 
     return new Promise((resolve, reject) => {
-      this.Client.indices.flush(requestPayload, (error, result) => {
+      this.Client.deleteByQuery(requestPayload, (error, result) => {
         if (error) {
           reject(error)
         } else {
