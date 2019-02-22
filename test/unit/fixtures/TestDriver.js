@@ -1,6 +1,6 @@
 'use strict'
 
-const AbstractDriver = require('../../src/Drivers/Abstract')
+const AbstractDriver = require('../../../src/Drivers/Abstract')
 
 class StubDriver extends AbstractDriver {}
 

@@ -1,9 +1,9 @@
 'use strict'
 
 require('dotenv').load()
-const AbstractDriver = require('../src/Drivers/Abstract')
+const AbstractDriver = require('../../src/Drivers/Abstract')
 const TestDriver = require('./fixtures/TestDriver')
-const { LogicalException } = require('../src/Exceptions')
+const { LogicalException } = require('../../src/Exceptions')
 
 describe('AbstractDriver', () => {
   it('throws exception if constructed', () => {

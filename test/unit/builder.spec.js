@@ -1,6 +1,6 @@
 'use strict'
 
-const Builder = require('../src/Builder')
+const Builder = require('../../src/Builder')
 const VanillaSerializer = require('@adonisjs/lucid/src/Lucid/Serializers/Vanilla')
 
 describe('Builder', () => {

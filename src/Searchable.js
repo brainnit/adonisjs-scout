@@ -59,6 +59,25 @@ class Searchable {
     }
 
     /**
+     *
+     *
+     * By default it is empty.
+     *
+     * @override
+     *
+     * @method searchableRules
+     *
+     * @static
+     *
+     * @return {Array|String} ES6 Class
+     */
+    if (!Model.searchableRules) {
+      Model.searchableRules = function () {
+        return []
+      }
+    }
+
+    /**
      * The search rules to be used for searching data in reusable ways.
      * The return value(s) must always be ES6 class(es).
      *

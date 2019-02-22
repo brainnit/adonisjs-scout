@@ -1,8 +1,8 @@
 'use strict'
 
 const { Config } = require('@adonisjs/sink')
-const Scout = require('../src/Scout')
-const NullDriver = require('../src/Drivers').null
+const Scout = require('../../src/Scout')
+const NullDriver = require('../../src/Drivers').null
 
 describe('Scout', () => {
   it('throw exception when unable to find engine', () => {

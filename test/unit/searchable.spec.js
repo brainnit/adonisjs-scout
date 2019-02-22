@@ -6,7 +6,7 @@ const DatabaseManager = require('@adonisjs/lucid/src/Database/Manager')
 const VanillaSerializer = require('@adonisjs/lucid/src/Lucid/Serializers/Vanilla')
 const { ioc } = require('@adonisjs/fold')
 const { Config, Env, setupResolver } = require('@adonisjs/sink')
-const Builder = require('../src/Builder')
+const Builder = require('../../src/Builder')
 const setup = require('./fixtures/setup')
 
 beforeAll(async () => {
@@ -15,7 +15,7 @@ beforeAll(async () => {
 
   ioc.singleton('Adonis/Src/Config', function () {
     const config = new Config()
-    config.set('scout', require('../config'))
+    config.set('scout', require('../../config'))
     return config
   })
   ioc.alias('Adonis/Src/Config', 'Config')
@@ -39,7 +39,7 @@ beforeAll(async () => {
 
   ioc.singleton('Adonis/Addons/Scout', () => {
     const Config = ioc.use('Adonis/Src/Config')
-    const Scout = require('../src/Scout')
+    const Scout = require('../../src/Scout')
     return new Scout(Config)
   })
   ioc.alias('Adonis/Addons/Scout', 'Scout')
@@ -48,7 +48,7 @@ beforeAll(async () => {
   ioc.alias('Adonis/Src/Model', 'Model')
 
   ioc.bind('Adonis/Traits/Searchable', () => {
-    const Searchable = require('../src/Searchable')
+    const Searchable = require('../../src/Searchable')
     return new Searchable()
   })
   ioc.alias('Adonis/Traits/Searchable', 'Searchable')

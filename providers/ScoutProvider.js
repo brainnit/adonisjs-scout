@@ -4,7 +4,7 @@ const { ServiceProvider } = require('@adonisjs/fold')
 
 class ScoutProvider extends ServiceProvider {
   /**
-   * Registra namespaces no IoC container.
+   * Register namespaces on IoC container.
    *
    * @method register
    *
