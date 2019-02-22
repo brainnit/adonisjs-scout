@@ -4,7 +4,7 @@ const AbstractDriver = require('./Abstract')
 const ElasticsearchClient = require('elasticsearch').Client
 const Promise = require('bluebird')
 const bodybuilder = require('bodybuilder')
-const { get, map, filter, chunck } = require('lodash')
+const { get, map, filter, chunck, isArray } = require('lodash')
 const debug = require('debug')('scout:elasticsearch')
 
 /**
@@ -36,38 +36,34 @@ class Elasticsearch extends AbstractDriver {
    *
    * @async
    *
-   * @param {Collection|Model} model
+   * @param {Collection|Model} models
    *
    * @return {void}
    */
-  async update (model) {
-    if (!model) {
+  async update (models) {
+    if (!models) {
       return
     }
 
-    /**
-     * If models is array, dispatch update for each one of them
-     */
-    if (Array.isArray(model.rows)) {
-      model.rows.forEach(modelInstance => {
-        this.update(modelInstance)
-      })
-      return
-    }
+    models = Array.isArray(models.rows) ? models.rows : [models]
+
+    const index = models[0].searchableAs()
 
     /**
      * Initializes search index for the given model, if needed
      */
-    await this.transporter.initIndex(model.searchableAs())
+    await this.transporter.initIndex(index)
 
     /**
-     * Save serialized model to the search engine, using the result
+     * Save serialized models to the search engine, using the result
      * from `model.getSearchableKey()` as object id.
      */
-    return this.transporter.index(
-      model.searchableAs(),
-      model.getSearchableKey(),
-      model.toSearchableJSON()
+    return this.transporter.indexBulk(
+      index,
+      models.map(model => ({
+        id: model.getSearchableKey(),
+        data: model.toSearchableJSON()
+      }))
     )
   }
 
@@ -517,28 +513,30 @@ class ElasticsearchTransporter {
   }
 
   /**
-   * Add an object to Elasticsearch index.
+   * Add/Update objects to Elasticsearch index.
    *
    * @async
    *
+   * @throws
+   *
    * @param {String} index
-   * @param {String} objectId
-   * @param {Object} objectData
+   * @param {Array} objects
    *
    * @return {Promise}
    */
-  index (index, objectId, objectData) {
-    const requestPayload = {
-      index,
-      type: '_doc',
-      id: objectId,
-      body: objectData
-    }
+  indexBulk (index, objects) {
+    const requestPayload = { body: [] }
+    objects.forEach(object => {
+      requestPayload.body.push(
+        { index: { _index: index, _type: '_doc', _id: object.id } },
+        object.data
+      )
+    })
 
-    debug(`Indexing with %o`, requestPayload)
+    debug(`Removing from index with %o`, requestPayload)
 
     return new Promise((resolve, reject) => {
-      this.Client.index(requestPayload, (error, result) => {
+      this.Client.bulk(requestPayload, (error, result) => {
         if (error) {
           reject(error)
         } else {

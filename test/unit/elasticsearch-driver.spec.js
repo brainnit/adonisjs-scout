@@ -45,7 +45,7 @@ describe('ElasticsearchDriver', () => {
   })
 
   it('update adds objects to index', () => {
-    expect.assertions(4)
+    expect.assertions(3)
 
     const elasticsearch = new ElasticsearchDriver()
     elasticsearch.transporter = jest.fn()
@@ -55,10 +55,11 @@ describe('ElasticsearchDriver', () => {
       })
     })
 
-    elasticsearch.transporter.index = jest.fn((a, b, c) => {
+    elasticsearch.transporter.indexBulk = jest.fn((a, b) => {
       expect(a).toEqual('table')
-      expect(b).toEqual('key1')
-      expect(c).toEqual({ foo: 'bar' })
+      expect(b).toEqual([
+        { id: 'key1', data: { foo: 'bar' } }
+      ])
     })
 
     const modelMock = jest.fn()
@@ -446,29 +447,45 @@ describe('ElasticsearchTransport', () => {
     nock.removeInterceptor(interceptor)
   })
 
-  it('index adds object to index', async () => {
+  it('indexBulk adds object to index', async () => {
     const transporter = new ElasticsearchDriver.Transport(config)
-    jest.spyOn(transporter.Client, 'index')
+    jest.spyOn(transporter.Client, 'bulk')
 
     const interceptor = nock('http://localhost:9200')
-      .post('/users/_doc/1')
+      .post('/_bulk')
       .reply(200, {
-        '_index': 'users',
-        '_type': '_doc',
-        '_id': 'key1',
-        '_version': 1,
-        'result': 'created'
+        'took': 0,
+        'errors': false,
+        'items': [
+          {
+            'index': {
+              '_index': 'test',
+              '_type': '_doc',
+              '_id': '1',
+              '_version': 1,
+              'result': 'created',
+              '_shards': {
+                'total': 2,
+                'successful': 1,
+                'failed': 0
+              },
+              'status': 201,
+              '_seq_no': 0,
+              '_primary_term': 1
+            }
+          }
+        ]
       })
 
-    await transporter.index('users', '1', { foo: 'bar' })
+    await transporter.indexBulk('users', [
+      { id: '1', data: { foo: 'bar' } }
+    ])
 
-    expect(transporter.Client.index).toHaveBeenCalledWith({
-      index: 'users',
-      type: '_doc',
-      id: '1',
-      body: {
-        foo: 'bar'
-      }
+    expect(transporter.Client.bulk).toHaveBeenCalledWith({
+      body: [
+        { index: { _index: 'users', _type: '_doc', _id: '1' } },
+        { foo: 'bar' }
+      ]
     }, expect.anything())
 
     nock.removeInterceptor(interceptor)
