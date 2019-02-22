@@ -31,8 +31,8 @@ class Import extends Command {
    */
   static get signature () {
     return `
-    scout:import { model: Model to sync to index }
-    { -c, --chunck: Chunk size }
+    scout:import { model : Model to sync to index } { chunck?=25 : Chunk size }
+    { -a, --keep-alive: Do not close database connection when import finishes }
     `
   }
 
@@ -57,7 +57,7 @@ class Import extends Command {
    *
    * @return {void|Array}
    */
-  async handle ({ model }, { chunck }) {
+  async handle ({ model, chunck }, { keepAlive }) {
     try {
       const startTime = process.hrtime()
 
@@ -65,30 +65,42 @@ class Import extends Command {
         return this.viaAce ? this.warn(`Nothing to do`) : `Nothing to do`
       }
 
-      chunck = chunck || 25
+      const Model = ioc.use(`App/Models/${model}`)
 
-      const Model = ioc.make(`App/Models/${model}`)
-
+      let importedCount = 0
       let lastPage = 1
 
       for (let page = 1; page <= lastPage; page++) {
         /**
-         * Search for first users
+         * Get users chunk and make them searchable.
+         *
+         * @todo Start doing this in bulk for gods sake!
          */
-        let users = await Model.query().paginate(page, chunck)
+        let users = await Model.query()
+          .orderBy(Model.primaryKey)
+          .paginate(page, chunck)
 
-        /**
-         * Make all users searchable adding them to index
-         */
         await users.searchable()
 
-        lastPage = users.lastPage
+        /**
+         * Add chunck to importedCount and print it
+         */
+        importedCount += users.size()
+        this.info(`Imported ${importedCount} models to index...`)
 
-        this.info(`Imported ${page * chunck} models...`)
+        lastPage = users.pages.lastPage
       }
 
       const endTime = process.hrtime(startTime)
-      this.success(`Imported all models in ${prettyHrTime(endTime)}`)
+      this.success(`Finished importing models in ${prettyHrTime(endTime)}`)
+
+      /**
+       * Close the connection when seeder are executed and keep alive is
+       * not passed
+       */
+      if (!keepAlive) {
+        ioc.use('Database').close()
+      }
     } catch (error) {
       console.log(error)
       process.exit(1)
