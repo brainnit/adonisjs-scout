@@ -7,8 +7,13 @@ module.exports = {
         table.increments()
         table.string('title')
         table.timestamps()
-        table.timestamp('deleted_at').nullable()
       })
+    ]
+    return Promise.all(tables)
+  },
+  truncateTables (db) {
+    const tables = [
+      db.truncate('stubs')
     ]
     return Promise.all(tables)
   },

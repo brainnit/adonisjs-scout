@@ -15,7 +15,12 @@ beforeAll(async () => {
 
   ioc.singleton('Adonis/Src/Config', function () {
     const config = new Config()
-    config.set('scout', require('../../config'))
+    config.set('scout', {
+      driver: 'null',
+      prefix: '',
+      null: {}
+    })
+
     return config
   })
   ioc.alias('Adonis/Src/Config', 'Config')
@@ -63,7 +68,7 @@ afterAll(async () => {
 })
 
 afterEach(async () => {
-  await ioc.use('Database').table('stubs').truncate()
+  await setup.truncateTables(ioc.use('Database'))
 })
 
 describe('Searchable', () => {
@@ -94,6 +99,41 @@ describe('Searchable', () => {
 
   it('getSearchableKeyName returns model primaryKey by default', () => {
     expect(ModelStub.getSearchableKeyName()).toEqual('id')
+  })
+
+  it('makeAllSearchable uses orderBy', () => {
+    expect.assertions(1)
+    const TestModel = require('./fixtures/TestModel')
+
+    TestModel.query = jest.fn(() => {
+      const mock = jest.fn()
+      mock.orderBy = jest.fn(() => {
+        expect(mock.orderBy).toHaveBeenCalledWith('id')
+        return mock
+      })
+      mock.searchable = jest.fn()
+
+      return mock
+    })
+
+    TestModel._bootIfNotBooted()
+
+    TestModel.makeAllSearchable()
+  })
+
+  it('makeAllUnsearchable uses searchableUsing to flush', () => {
+    expect.assertions(1)
+
+    const TestModel = require('./fixtures/TestModel')
+    TestModel._bootIfNotBooted()
+
+    const engineMock = jest.fn()
+    engineMock.flush = jest.fn((model) => {
+      expect(model).toBeInstanceOf(TestModel)
+    })
+    TestModel.prototype.searchableUsing = jest.fn(() => engineMock)
+
+    TestModel.makeAllUnsearchable()
   })
 
   it('getSearchableKey returns model primaryKeyValue by default', () => {

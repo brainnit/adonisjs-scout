@@ -9,7 +9,7 @@ class TestModel extends Model {
   }
 
   static get table () {
-    return 'table'
+    return 'stubs'
   }
 }
 

@@ -31,6 +31,20 @@ module.exports = {
 
   /**
    * ------------------------------------------------------------------------
+   * Chunk Sizes
+   * ------------------------------------------------------------------------
+   *
+   * These options allow you to control the maximum chunk size when you are
+   * mass importing data into the search engine. This allows you to fine
+   * tune each of these chunk sizes based on the power of the servers.
+   */
+  chunk: {
+    searchable: 500,
+    unsearchable: 500
+  },
+
+  /**
+   * ------------------------------------------------------------------------
    * Elasticsearch
    * ------------------------------------------------------------------------
    *

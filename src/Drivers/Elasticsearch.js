@@ -4,7 +4,7 @@ const AbstractDriver = require('./Abstract')
 const ElasticsearchClient = require('elasticsearch').Client
 const Promise = require('bluebird')
 const bodybuilder = require('bodybuilder')
-const { get, map, filter, chunck, isArray } = require('lodash')
+const { get, map, filter } = require('lodash')
 const debug = require('debug')('scout:elasticsearch')
 
 /**
