@@ -46,6 +46,9 @@ class IndexKeeperProvider extends ServiceProvider {
     this.app.bind('Adonis/Commands/Scout:Import', () => {
       return require('../src/Commands/Import')
     })
+    this.app.bind('Adonis/Commands/Scout:Flush', () => {
+      return require('../src/Commands/Flush')
+    })
   }
 
   /**
@@ -59,6 +62,7 @@ class IndexKeeperProvider extends ServiceProvider {
     const ace = require('@adonisjs/ace')
     ace.addCommand('Adonis/Commands/Scout:IndexCreate')
     ace.addCommand('Adonis/Commands/Scout:Import')
+    ace.addCommand('Adonis/Commands/Scout:Flush')
   }
 }
 
