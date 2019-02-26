@@ -5,10 +5,10 @@ const { Command } = require('@adonisjs/ace')
 const prettyHrTime = require('pretty-hrtime')
 
 class Import extends Command {
-  constructor (Helpers, Scout) {
+  constructor (Database, Event) {
     super()
-    this._appRoot = Helpers.appRoot()
-    this.Scout = Scout
+    this.Database = Database
+    this.Event = Event
   }
 
   /**
@@ -19,7 +19,7 @@ class Import extends Command {
    * @return {Array}
    */
   static get inject () {
-    return ['Adonis/Src/Helpers', 'Adonis/Addons/Scout']
+    return ['Adonis/Src/Database', 'Adonis/Src/Event']
   }
 
   /**
@@ -31,7 +31,7 @@ class Import extends Command {
    */
   static get signature () {
     return `
-    scout:import { model : Model to sync to index } { chunck?=25 : Chunk size }
+    scout:import { model : Model to import into index }
     { -a, --keep-alive: Do not close database connection when import finishes }
     `
   }
@@ -57,7 +57,7 @@ class Import extends Command {
    *
    * @return {void|Array}
    */
-  async handle ({ model, chunck }, { keepAlive }) {
+  async handle ({ model }, { keepAlive }) {
     try {
       const startTime = process.hrtime()
 
@@ -67,42 +67,32 @@ class Import extends Command {
 
       const Model = ioc.use(`App/Models/${model}`)
 
-      let importedCount = 0
-      let lastPage = 1
-
-      for (let page = 1; page <= lastPage; page++) {
-        /**
-         * Get users chunk and make them searchable.
-         *
-         * @todo Start doing this in bulk for gods sake!
-         */
-        let users = await Model.query()
-          .orderBy(Model.primaryKey)
-          .paginate(page, chunck)
-
-        await users.searchable()
-
-        /**
-         * Add chunck to importedCount and print it
-         */
-        importedCount += users.size()
-        this.info(`Imported ${importedCount} models to index...`)
-
-        lastPage = users.pages.lastPage
+      let count = 0
+      const listener = async models => {
+        count += models.size()
+        this.info(`Imported ${count} ${Model.name} models...`)
       }
 
+      this.Event.on('scout::modelsImported', listener)
+
+      await Model.makeAllSearchable()
+
+      this.Event.removeListener('scout::modelsImported', listener)
+
       const endTime = process.hrtime(startTime)
-      this.success(`Finished importing models in ${prettyHrTime(endTime)}`)
+      this.success(
+        `All ${Model.name} models were imported in ${prettyHrTime(endTime)}`
+      )
 
       /**
        * Close the connection when seeder are executed and keep alive is
        * not passed
        */
       if (!keepAlive) {
-        ioc.use('Database').close()
+        this.Database.close()
       }
     } catch (error) {
-      console.log(error)
+      this.error(error)
       process.exit(1)
     }
   }

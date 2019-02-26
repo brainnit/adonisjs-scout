@@ -106,8 +106,9 @@ To tell Scout about what search rules your model supports, just add the followin
 ## Backlog
 
 - Move index create/update operations off from indexing methods (Elasticsearch) 
+- Add commands (make:scout:searchableModel, make:scout:searchRule, make:scout:indexKeeper)
+- Document all error codes
 - Add setup instructions
-- Add commands (searchable:flush, searchable:import, make:searchableModel, make:searchRule)
 - Add badges for npm version, build status, coverals
 - Add license scan
 - Add better wiki/docs

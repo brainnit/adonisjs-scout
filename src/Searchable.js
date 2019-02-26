@@ -27,6 +27,87 @@ class Searchable {
     Searchable.bootSearchable(Model, options)
 
     /**
+     * Extend the query builder adding `chunk`.
+     *
+     * This method will break any query into chunks to work with large datasets.
+     */
+    Model.queryMacro('chunk', async function (size, callback) {
+      let page = 1
+      let resultsCount
+
+      do {
+        /**
+         * We intentionally do not use the QueryBuilder `paginate` method here
+         * to prevent it from executing another query to count results in every
+         * interation.
+         */
+        let results = await this.offset((page - 1) * size).limit(size).fetch()
+        resultsCount = results.size()
+
+        if (resultsCount === 0) {
+          break
+        }
+
+        /**
+         * On each chunk result set, we will pass them to the callback and then
+         * let the developer take care of everything within the callback, which
+         * allows us to keep the memory low for spinning through large result
+         * sets for working.
+         */
+        if (await callback(results) === false) {
+          return false
+        }
+
+        page += 1
+      }
+      while (resultsCount === size)
+
+      return true
+    })
+
+    /**
+     * Extend the query builder with `searchable`.
+     *
+     * This method will search for all instances of the model and index
+     * all of them into the search engine, in chunks.
+     */
+    Model.queryMacro('searchable', function (chunk = null) {
+      const event = ioc.use('Adonis/Src/Event')
+      chunk = chunk || ioc.use('Config').get('scout.chunk.searchable', 500)
+
+      return this.chunk(chunk, async models => {
+        /**
+         * Simply make all models searchable and emit an event to tell
+         * the world about it.
+         */
+        await models.searchable()
+
+        event.emit('scout::modelsImported', models)
+      })
+    })
+
+    /**
+     * Extend the query builder with `unsearchable`.
+     *
+     * This method will search for all instances of the model and flush
+     * all of them from the search engine, in chunks.
+     */
+    Model.queryMacro('unsearchable', function (chunk = null) {
+      const event = ioc.use('Adonis/Src/Event')
+      chunk = chunk || ioc.use('Config').get('scout.chunk.unsearchable', 500)
+
+      return this.chunk(chunk, async models => {
+        /**
+         * Simply remove all models from search engine index and emit
+         * an event to tell the world about it.
+         */
+        await models.unsearchable()
+
+        event.emit('scout::modelsFlushed', models)
+      })
+    })
+
+    /**
      * Perform a search against the model's indexed data.
      *
      * @method search
@@ -112,6 +193,37 @@ class Searchable {
       Model.getSearchableKeyName = function () {
         return Model.primaryKey
       }
+    }
+
+    /**
+     * Make all instances of the model searchable.
+     *
+     * @method makeAllSearchable
+     *
+     * @static
+     *
+     * @return {void}
+     */
+    Model.makeAllSearchable = async function () {
+      /**
+       * Call model's QueryBuilder to make all instances searchable
+       */
+      await this.query().orderBy(this.primaryKey).searchable()
+    }
+
+    /**
+     * Make all instances of the model unsearchable by flushing
+     * its search index.
+     *
+     * @method makeAllUnsearchable
+     *
+     * @static
+     *
+     * @return {void}
+     */
+    Model.makeAllUnsearchable = async function () {
+      const model = new this()
+      await model.searchableUsing().flush(model)
     }
 
     /**

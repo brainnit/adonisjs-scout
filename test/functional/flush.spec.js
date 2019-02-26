@@ -7,7 +7,7 @@ const { ioc, registrar } = require('@adonisjs/fold')
 const { Config, setupResolver, Helpers } = require('@adonisjs/sink')
 const setup = require('../unit/fixtures/setup')
 
-const Import = require('../../src/Commands/Import')
+const Flush = require('../../src/Commands/Flush')
 
 beforeAll(async () => {
   ioc.singleton('Adonis/Src/Config', function () {
@@ -78,15 +78,15 @@ afterAll(async () => {
   }
 }, 0)
 
-describe('Import Command', () => {
+describe('Flush Command', () => {
   it('skip when no Model class is given', async () => {
-    ace.addCommand(Import)
-    const result = await ace.call('scout:import')
+    ace.addCommand(Flush)
+    const result = await ace.call('scout:flush')
     expect(result).toEqual('Nothing to do')
   })
 
-  it('import models', async () => {
-    ace.addCommand(Import)
+  it('flush models', async () => {
+    ace.addCommand(Flush)
 
     jest.spyOn(console, 'log')
 
@@ -101,15 +101,10 @@ describe('Import Command', () => {
       { title: 'foobar' }
     ])
 
-    await ace.call('scout:import', { model: 'TestModel' })
-
-    expect(ioc.use('Event').emit).toHaveBeenCalledWith(
-      'scout::modelsImported',
-      expect.anything()
-    )
+    await ace.call('scout:flush', { model: 'TestModel' })
 
     expect(console.log).toHaveBeenCalledWith(
-      expect.stringContaining('All TestModel models were imported')
+      expect.stringContaining('All TestModel models were flushed')
     )
   })
 })
