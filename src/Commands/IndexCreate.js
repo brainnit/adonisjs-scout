@@ -69,6 +69,7 @@ class IndexCreate extends BaseIndex {
         let keeperInstance = ioc.make(allFiles[file])
         if (typeof (keeperInstance.up) === 'function') {
           await keeperInstance.up()
+          this.success(`Finished executing ${keeperInstance.constructor.name}.`)
         } else {
           this.warn(`${keeperInstance.constructor.name} does not have a run method`)
         }
