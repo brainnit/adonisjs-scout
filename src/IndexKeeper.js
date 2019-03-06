@@ -11,6 +11,17 @@ class IndexKeeper {
   }
 
   /**
+   * IoC container injections.
+   *
+   * @method inject
+   *
+   * @return {Array}
+   */
+  static get inject () {
+    return ['Adonis/Addons/Scout']
+  }
+
+  /**
    * Get the engine driver to be used.
    *
    * If null is given, the default engine driver will be used.
