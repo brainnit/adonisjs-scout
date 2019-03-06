@@ -60,7 +60,7 @@ class Scout {
       )
     }
 
-    const engineConfig = this.Config.get(`scout.${name}`)
+    const engineConfig = this.Config.get(`scout.${name.toLowerCase()}`)
 
     /**
      * Cannot get config for the defined engine
