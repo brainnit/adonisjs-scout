@@ -6,6 +6,7 @@ const Promise = require('bluebird')
 const LengthPaginator = require('./Paginators/LengthAwarePaginator')
 const CursorPaginator = require('./Paginators/CursorPaginator')
 const CE = require('./Exceptions')
+const { filter } = require('lodash')
 
 /**
  * @typedef {import('@adonisjs/lucid/src/Lucid/Model')} Model
@@ -27,14 +28,45 @@ class Builder extends Macroable {
    */
   constructor (model, query = null) {
     super()
+
+    /**
+     * @todo Prefix all internal proprierties with underscore
+     */
     this.model = model
     this.query = query
     this.index = null
-    this.rules = []
-    this.wheres = []
     this.limit = null
-    this.orders = []
-    this.aggregates = []
+    this._rules = []
+
+    /**
+     * Keep track of all statements added to the builder, with variable a schema
+     * that depends on the `grouping` and `type` of the statement.
+     */
+    this._statements = []
+
+    /**
+     * Internal flags used by the builder.
+     */
+    this._boolFlag = 'and'
+    this._notFlag = false
+  }
+
+  /**
+   * Get all rules.
+   *
+   * @return {Array}
+   */
+  get rules () {
+    return this._rules
+  }
+
+  /**
+   * Get all statements.
+   *
+   * @return {Array}
+   */
+  get statements () {
+    return this._statements
   }
 
   /**
@@ -71,23 +103,122 @@ class Builder extends Macroable {
       throw CE.LogicalException.ruleNotSupported(ruleClass)
     }
 
-    this.rules.push(ruleClass)
+    this._rules.push(ruleClass)
     return this
   }
 
   /**
-   * Add a constraint to the search query.
+   * Helper to get or set the `boolFlag` value.
+   *
+   * @param {String} value
+   *
+   * @return {*}
+   */
+  _bool (value) {
+    if (arguments.length === 1) {
+      this._boolFlag = value
+      return this
+    }
+    const ret = this._boolFlag
+    this._boolFlag = 'and'
+
+    return ret
+  }
+
+  /**
+   * Helper to get or set the `notFlag` value.
+   *
+   * @param {Boolean} value
+   *
+   * @return {*}
+   */
+  _not (value) {
+    if (arguments.length === 1) {
+      this._notFlag = value
+      return this
+    }
+    const ret = this._notFlag
+    this._notFlag = false
+
+    return ret
+  }
+
+  /**
+   * Adds a `where` clause to the query.
    *
    * @chainbale
    *
-   * @param {String} field
+   * @param {String|Function} field
+   * @param {String} operator
    * @param {*} value
    *
    * @return {Builder} this
    */
   where (field, operator, value) {
-    this.wheres.push({ field, operator, value })
+    /**
+     * Check if the column is a function, in which case it's
+     * a where statement group.
+     */
+    if (typeof field === 'function') {
+      return this.whereWrapped(field)
+    }
+
+    this._statements.push({
+      grouping: 'where',
+      type: 'whereBasic',
+      field,
+      operator,
+      value,
+      not: this._not(),
+      bool: this._bool()
+    })
+
     return this
+  }
+
+  /**
+   * Adds an `or where` clause to the query.
+   *
+   * @chainbale
+   *
+   * @param {String|Function} field
+   * @param {String} operator
+   * @param {*} value
+   *
+   * @return {Builder} this
+   */
+  orWhere () {
+    this._bool('or')
+    return this.where.apply(this, arguments)
+  }
+
+  /**
+   * Adds an `advanced where` clause to the query.
+   *
+   * @chainbale
+   *
+   * @param {Function} callback
+   *
+   * @return {Builder}
+   */
+  whereWrapped (callback) {
+    this._statements.push({
+      grouping: 'where',
+      type: 'whereWrapped',
+      value: this._compileCallback(callback),
+      not: this._not(),
+      bool: this._bool()
+    })
+
+    return this
+  }
+
+  _compileCallback (callback) {
+    const builder = new this.constructor(this.model)
+    return () => {
+      callback.call(builder, builder)
+      return builder
+    }
   }
 
   /**
@@ -128,7 +259,13 @@ class Builder extends Macroable {
    * @return {Builder} this
    */
   orderBy (field, direction = 'asc') {
-    this.orders.push({ field, direction })
+    this._statements.push({
+      grouping: 'order',
+      type: 'orderByBasic',
+      value: field,
+      direction
+    })
+
     return this
   }
 
@@ -137,13 +274,19 @@ class Builder extends Macroable {
    *
    * @chainable
    *
-   * @param {String} operator
+   * @param {String} method
    * @param {String} field
    *
    * @return {Builder} this
    */
-  aggregate (operator, field) {
-    this.aggregates.push({ operator, field })
+  aggregate (method, field) {
+    this._statements.push({
+      grouping: 'aggregate',
+      type: 'aggregateBasic',
+      method,
+      value: field
+    })
+
     return this
   }
 
@@ -180,7 +323,7 @@ class Builder extends Macroable {
    * @return {Boolean}
    */
   hasRules () {
-    return !!this.rules.length
+    return !!this._rules.length
   }
 
   /**
@@ -190,7 +333,7 @@ class Builder extends Macroable {
    */
   buildRules () {
     const queryArray = []
-    this.rules.forEach(ruleClass => {
+    this._rules.forEach(ruleClass => {
       let SearchRule = ioc.use(ruleClass)
       queryArray.push((new SearchRule(this)).buildQuery())
     })
@@ -254,7 +397,7 @@ class Builder extends Macroable {
      * Enforce default sorting if none given.
      * This is required to build cursors and be prepared for pagination.
      */
-    if (this.orders.length === 0) {
+    if (filter(this.statements, ['grouping', 'order']).length === 0) {
       this.orderBy(this.model.constructor.getSearchableKeyName())
     }
 

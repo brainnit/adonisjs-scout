@@ -23,13 +23,31 @@ describe('Builder', () => {
     expect(builder.index).toEqual('foo')
   })
 
-  it('where adds to wheres', () => {
+  it('where adds whereBasic statement', () => {
     const builder = new Builder(jest.fn(), 'query')
     builder.where('foo', 'match', 'bar')
-    expect(builder.wheres).toContainEqual({
+    expect(builder._statements).toContainEqual({
+      grouping: 'where',
+      type: 'whereBasic',
       field: 'foo',
       operator: 'match',
-      value: 'bar'
+      value: 'bar',
+      not: false,
+      bool: 'and'
+    })
+  })
+
+  it('where given a callback adds whereWrapped statement', () => {
+    const builder = new Builder(jest.fn(), 'query')
+    const cb = builder => {}
+    builder.where(cb)
+
+    expect(builder._statements).toContainEqual({
+      grouping: 'where',
+      type: 'whereWrapped',
+      value: expect.any(Function),
+      not: false,
+      bool: 'and'
     })
   })
 
@@ -39,18 +57,27 @@ describe('Builder', () => {
     expect(builder.limit).toEqual(10)
   })
 
-  it('orderBy adds to orders', () => {
+  it('orderBy adds orderByBasic statement', () => {
     const builder = new Builder(jest.fn(), 'query')
     builder.orderBy('foo', 'asc')
-    expect(builder.orders).toContainEqual({ field: 'foo', direction: 'asc' })
+
+    expect(builder._statements).toContainEqual({
+      grouping: 'order',
+      type: 'orderByBasic',
+      value: 'foo',
+      direction: 'asc'
+    })
   })
 
-  it('aggregate adds to aggregates', () => {
+  it('aggregate adds aggregateBasic statement', () => {
     const builder = new Builder(jest.fn(), 'query')
     builder.aggregate('sum', 'foo')
-    expect(builder.aggregates).toContainEqual({
-      operator: 'sum',
-      field: 'foo'
+
+    expect(builder._statements).toContainEqual({
+      grouping: 'aggregate',
+      type: 'aggregateBasic',
+      method: 'sum',
+      value: 'foo'
     })
   })
 

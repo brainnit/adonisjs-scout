@@ -26,14 +26,6 @@ const providers = [
 
 Copy `config/index.js` to your app config folder and name it `scout.js`. Don't forget to setup your environment variables.
 
-You may also need to install extra dependencies depending on the search engine driver you will be using. For instance, to use Elasticsearch you will need:
-
-```sh
-npm i --save elasticsearch bodybuilder
-# or
-yarn add elasticsearch bodybuilder
-```
-
 ## Usage
 
 Add `@provider:Searchable` trait to your models and define only the methods you want to override to change default behaviour:
