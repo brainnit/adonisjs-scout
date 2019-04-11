@@ -54,9 +54,9 @@ module.exports = {
    *
    * ```sh
    * # to install via npm
-   * npm i --save elasticsearch bodybuilder
+   * npm i --save elasticsearch
    * # to install via yarn
-   * yarn add elasticsearch bodybuilder
+   * yarn add elasticsearch
    * ```
    */
   elasticsearch: {

@@ -3,9 +3,9 @@
 const AbstractDriver = require('./Abstract')
 const ElasticsearchClient = require('elasticsearch').Client
 const Promise = require('bluebird')
-const bodybuilder = require('bodybuilder')
-const { get, map, filter } = require('lodash')
+const { get, map, filter, groupBy, pickBy, size } = require('lodash')
 const debug = require('debug')('scout:elasticsearch')
+const { InvalidArgumentException } = require('../Exceptions')
 
 /**
  * @typedef {import('../Builder')} Builder
@@ -142,140 +142,328 @@ class Elasticsearch extends AbstractDriver {
    */
   _buildQueryDSL (builder, customOptions = {}) {
     const options = Object.assign({ page: null, limit: null }, customOptions)
+    const queryBlocks = []
 
-    // Uses the bodybuilder to help us build the query
-    const queryBuilder = bodybuilder()
-
-    // If there is no search rule applied
+    /**
+     * Matches the query terms either directly or via search rules.
+     */
     if (builder.hasRules()) {
-      // Adds search rules to the query
-      builder.buildRules().forEach(query => {
-        queryBuilder.query('bool', query)
-      })
-    } else if (builder.query && builder.query !== '*') {
-      // Searches for `query` in any document field
-      queryBuilder.query('query_string', 'query', builder.query)
+      queryBlocks.push(this._rules(builder.buildRules()))
     } else {
-      // Match all
-      queryBuilder.query('match_all', {})
+      queryBlocks.push(this._query(builder.query))
     }
 
-    // build the filters
-    this._buildFilters(queryBuilder, builder.wheres)
+    /**
+     * Group components by the `grouping` property.
+     */
+    const stmts = groupBy(builder.statements, 'grouping')
 
-    // build the sort
-    this._buildSort(queryBuilder, builder.orders)
+    /**
+     * List of query components to build.
+     */
+    const components = ['where', 'order', 'aggregate']
 
-    // build the aggregates
-    this._buildAggregates(queryBuilder, builder.aggregates)
+    /**
+     * Loop through each query component building it separately.
+     */
+    components.forEach(component => {
+      queryBlocks.push(this[`_${component}`](stmts[component]))
+    })
 
-    // build the from
-    this._buildFrom(queryBuilder, options.page, options.limit)
+    /**
+     * Determine the results offset when paginating by page number
+     */
+    queryBlocks.push(this._buildFrom(options.page, options.limit))
 
-    // build the size
-    this._buildSize(queryBuilder, options.limit)
+    /**
+     * Determine the number of results to bring back when paginating
+     */
+    queryBlocks.push(this._buildSize(options.limit))
 
-    // build the search after
-    this._buildAfter(queryBuilder, options.after)
+    /**
+     * Determine the last previous result when paginating by cursor
+     */
+    queryBlocks.push(this._buildAfter(options.after))
 
-    return queryBuilder.build()
+    let fullQuery = {}
+    queryBlocks.forEach(block => Object.assign(fullQuery, block))
+
+    return { query: fullQuery }
+  }
+
+  /**
+   * Build the search rules part of the query.
+   *
+   * @param {Array} rules
+   *
+   * @return {Object}
+   */
+  _rules (rules) {
+    if (!rules) return {}
+    const ruleBlocks = rules.map(query => ({ bool: query }))
+
+    return {
+      bool: {
+        must: [
+          ...ruleBlocks
+        ]
+      }
+    }
+  }
+
+  /**
+   * Build the search for the given terms.
+   *
+   * @param {Null|String} query
+   *
+   * @return {Object}
+   */
+  _query (query) {
+    if (!query) return {}
+    if (query === '*') return { match_all: {} }
+
+    return {
+      query_string: {
+        query
+      }
+    }
   }
 
   /**
    * Build the filters part of the query.
    *
-   * @param {bodybuilder} queryBuilder
-   * @param {Array} wheres
+   * @param {Array} stmts
    *
-   * @return {bodybuilder}
+   * @return {Object}
    */
-  _buildFilters (queryBuilder, wheres) {
-    if (!wheres) return
+  _where (stmts) {
+    if (!stmts) return {}
 
-    wheres.forEach(where => {
-      queryBuilder.filter(where.operator, where.field, where.value)
+    const bool = {
+      /**
+       * All of these clauses must match. The equivalent of AND.
+       */
+      must: [],
+
+      /**
+       * All of these clauses must not match. The equivalent of NOT.
+       */
+      must_not: [],
+
+      /**
+       * At least one of these clauses must match. The equivalent of OR.
+       */
+      should: [],
+
+      /**
+       * Non-scoring, filters for structured search.
+       */
+      filter: []
+    }
+
+    stmts.forEach(stmt => {
+      let value = this[`_${stmt.type}`](stmt)
+
+      if (stmt.bool === 'and') {
+        bool[stmt.not ? 'must_not' : 'must'].push(value)
+      } else if (stmt.bool === 'or' && !stmt.not) {
+        bool.should.push(value)
+      } else if (stmt.bool === 'or' && stmt.not) {
+        bool.should.push({
+          bool: {
+            must_not: value
+          }
+        })
+      }
     })
 
-    return queryBuilder
+    return {
+      bool: pickBy(bool, size)
+    }
   }
 
   /**
-   * Build the sorting part of the query.
+   * Build the `whereBasic` filter statements.
    *
-   * @param {bodybuilder} queryBuilder
-   * @param {Array} orders
+   * @param {Object} stmt
    *
-   * @return {bodybuilder}
+   * @return {Object}
    */
-  _buildSort (queryBuilder, orders) {
-    if (!orders) return
+  _whereBasic (stmt) {
+    switch (stmt.operator) {
+      default:
+        throw InvalidArgumentException.invalidParameter(
+          `Operator not supported: ${stmt.operator}`
+        )
 
-    orders.forEach(order => {
-      queryBuilder.sort(order.field, order.direction)
-    })
+      case '=':
+        return {
+          term: {
+            [stmt.field]: stmt.value
+          }
+        }
 
-    return queryBuilder
+      case '>':
+      case '<':
+      case '>=':
+      case '<=':
+        const rangeOperator = this._getRangeOperator(stmt.operator)
+        return {
+          range: {
+            [stmt.field]: {
+              [rangeOperator]: stmt.value
+            }
+          }
+        }
+    }
   }
 
   /**
-   * Build the aggregates part of the query.
+   * Get the proper Elasticsearch range comparison operator
+   * given a SQL type of operator.
    *
-   * @param {bodybuilder} queryBuilder
-   * @param {Array} aggregates
-   *
-   * @return {bodybuilder}
+   * @param {String} operator
    */
-  _buildAggregates (queryBuilder, aggregates) {
-    if (!aggregates) return
+  _getRangeOperator (operator) {
+    const mapping = {
+      '>': 'gt',
+      '>=': 'gte',
+      '<': 'lt',
+      '<=': 'lte'
+    }
 
-    aggregates.forEach(agg => {
-      queryBuilder.aggregation(agg.operator, agg.field)
+    return mapping[operator]
+  }
+
+  /**
+   * Build the `whereWrapped` filter statements.
+   *
+   * @param {Object} stmt
+   *
+   * @return {Object}
+   */
+  _whereWrapped (stmt) {
+    const builder = stmt.value()
+    const { query } = this._buildQueryDSL(builder)
+
+    return query
+  }
+
+  /**
+   * Build the `order` part of the query.
+   *
+   * @param {Array} stmts
+   *
+   * @return {Object}
+   */
+  _order (stmts) {
+    if (!stmts) return {}
+
+    const sort = []
+
+    stmts.forEach(stmt => {
+      let value = this[`_${stmt.type}`](stmt)
+      sort.push(value)
     })
 
-    return queryBuilder
+    return { sort }
+  }
+
+  /**
+   * Build `orderByBasic` sort statements.
+   *
+   * @param {Object} stmt
+   *
+   * @return {Object}
+   */
+  _orderByBasic (stmt) {
+    if (!stmt) return {}
+
+    return {
+      [stmt.value]: {
+        order: stmt.direction
+      }
+    }
+  }
+
+  /**
+   * Build the `aggs` part of the query.
+   *
+   * @param {Array} stmts
+   *
+   * @return {Object}
+   */
+  _aggregate (stmts) {
+    if (!stmts) return {}
+
+    const aggs = {}
+    stmts.forEach(stmt => {
+      let value = this[`_${stmt.type}`](stmt)
+      Object.assign(aggs, value)
+    })
+
+    return { aggs }
+  }
+
+  /**
+   * Build `aggregateBasic` aggregate statements.
+   *
+   * @param {Object} stmt
+   *
+   * @return {Object}
+   */
+  _aggregateBasic (stmt) {
+    if (!stmt) return {}
+
+    return {
+      [`agg_${stmt.method}_${stmt.value}`]: {
+        [stmt.method]: {
+          field: stmt.value
+        }
+      }
+    }
   }
 
   /**
    * Build the size part of the query.
    *
-   * @param {bodybuilder} queryBuilder
    * @param {Number} page
    * @param {Number} limit
    *
-   * @return {bodybuilder}
+   * @return {Object}
    */
-  _buildFrom (queryBuilder, page, limit) {
-    if (!page || !limit) return
+  _buildFrom (page, limit) {
+    if (!page || !limit) return {}
 
-    return queryBuilder.from((page - 1) * limit)
+    return {
+      from: (page - 1) * limit
+    }
   }
 
   /**
    * Build the size part of the query.
    *
-   * @param {bodybuilder} queryBuilder
    * @param {Number} size
    *
-   * @return {bodybuilder}
+   * @return {Object}
    */
-  _buildSize (queryBuilder, limit) {
-    if (!limit) return
+  _buildSize (size) {
+    if (!size) return {}
 
-    return queryBuilder.size(limit)
+    return { size }
   }
 
   /**
    * Build the search after part of the query.
    *
-   * @param {bodybuilder} queryBuilder
-   * @param {*} after cursor
+   * @param {*} cursor
    *
-   * @return {bodybuilder}
+   * @return {Object}
    */
-  _buildAfter (queryBuilder, after) {
-    if (!after) return
+  _buildAfter (cursor) {
+    if (!cursor) return {}
 
-    return queryBuilder.rawOption('search_after', after)
+    return { search_after: cursor }
   }
 
   /**
