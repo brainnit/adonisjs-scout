@@ -1,5 +1,6 @@
 'use strict'
 
+const { filter } = require('lodash')
 const CE = require('../Exceptions')
 
 /**
@@ -199,7 +200,8 @@ class AbstractDriver {
    * @return {Array}
    */
   cursors (builder) {
-    return builder.orders.map(order => order.field)
+    const orders = filter(builder.statements, ['grouping', 'order'])
+    return orders.map(order => order.value)
   }
 }
 
