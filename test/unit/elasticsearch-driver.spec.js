@@ -99,89 +99,70 @@ describe('ElasticsearchDriver', () => {
     expect(elasticsearch.transporter.initIndex).toHaveBeenCalledWith('table')
   })
 
-  it.skip('_buildQueryDSL builds full query', () => {
+  it('_buildQueryDSL correctly builds full query', () => {
     const elasticsearch = new ElasticsearchDriver()
-    const builder = new Builder(jest.fn(), 'zoo')
-    builder.where('foo', 'match', 'bar')
-    builder.orderBy('foo', 'asc')
+    elasticsearch.queryBuilder = bodybuilder()
+
+    const builder = new Builder(jest.fn(), 'sonho grande')
+    builder.where('product', '=', 'book')
+    builder.orderBy('price', 'desc')
+    builder.aggregate('max', 'price')
 
     const query = elasticsearch._buildQueryDSL(builder)
 
     expect(query).toEqual({
-      'sort': [
+      sort: [
         {
-          'foo': {
-            'order': 'asc'
+          'price': {
+            order: 'desc'
           }
         }
       ],
-      'query': {
-        'bool': {
-          'filter': {
-            'match': {
-              'foo': 'bar'
+      query: {
+        bool: {
+          filter: {
+            term: {
+              'product': 'book'
             }
           },
-          'must': {
-            'query_string': {
-              'query': 'zoo'
+          must: {
+            query_string: {
+              query: 'sonho grande'
             }
+          }
+        }
+      },
+      aggs: {
+        agg_max_price: {
+          'max': {
+            field: 'price'
           }
         }
       }
     })
   })
 
-  it('_buildQueryDSL correctly builds query DSL using rules', () => {
+  it('_buildQueryDSL correctly builds query DSL when using rules', () => {
     ioc.bind('SearchRuleStub', () => SearchRuleStub)
-    ioc.bind('OtherSearchRuleStub', () => OtherSearchRuleStub)
     const elasticsearch = new ElasticsearchDriver()
+    elasticsearch.queryBuilder = bodybuilder()
+
     const modelMock = jest.fn()
-    modelMock.searchableRules = jest.fn(() => [
-      'SearchRuleStub',
-      'OtherSearchRuleStub'
-    ])
+    modelMock.searchableRules = jest.fn(() => ['SearchRuleStub'])
+
     const builder = new Builder(modelMock, 'foobar')
     builder.rule('SearchRuleStub')
-    builder.rule('OtherSearchRuleStub')
 
     const query = elasticsearch._buildQueryDSL(builder)
 
     expect(query).toEqual({
       query: {
         bool: {
-          must: [
-            {
-              bool: {
-                must: {
-                  query_string: {
-                    query: 'foobar'
-                  }
-                }
-              }
-            },
-            {
-              bool: {
-                match: {
-                  foo: 'foobar'
-                }
-              }
+          must: {
+            query_string: {
+              query: 'foobar'
             }
-          ]
-        }
-      }
-    })
-  })
-
-  it('_buildQueryDSL query matches any field when builder has query', () => {
-    const elasticsearch = new ElasticsearchDriver()
-    const builder = new Builder(jest.fn(), 'foo')
-    const query = elasticsearch._buildQueryDSL(builder)
-
-    expect(query).toEqual({
-      query: {
-        query_string: {
-          query: 'foo'
+          }
         }
       }
     })
@@ -189,26 +170,18 @@ describe('ElasticsearchDriver', () => {
 
   it('_buildQueryDSL query returns empty when nothing is queried', () => {
     const elasticsearch = new ElasticsearchDriver()
+    elasticsearch.queryBuilder = bodybuilder()
+
     const builder = new Builder(jest.fn())
     const query = elasticsearch._buildQueryDSL(builder)
 
-    expect(query).toEqual({ query: {} })
-  })
-
-  it('_buildQueryDSL query matches all when builder query is "*"', () => {
-    const elasticsearch = new ElasticsearchDriver()
-    const builder = new Builder(jest.fn(), '*')
-    const query = elasticsearch._buildQueryDSL(builder)
-
-    expect(query).toEqual({
-      query: {
-        match_all: {}
-      }
-    })
+    expect(query).toEqual({})
   })
 
   it('_buildQueryDSL correctly builds paginate query', () => {
     const elasticsearch = new ElasticsearchDriver()
+    elasticsearch.queryBuilder = bodybuilder()
+
     const builder = new Builder(jest.fn())
     builder.orderBy('foo')
 
@@ -218,22 +191,22 @@ describe('ElasticsearchDriver', () => {
     })
 
     expect(query).toEqual({
-      query: {
-        sort: [
-          {
-            foo: {
-              order: 'asc'
-            }
+      sort: [
+        {
+          foo: {
+            order: 'asc'
           }
-        ],
-        from: 20,
-        size: 20
-      }
+        }
+      ],
+      from: 20,
+      size: 20
     })
   })
 
   it('_buildQueryDSL correctly builds paginateAfter query', () => {
     const elasticsearch = new ElasticsearchDriver()
+    elasticsearch.queryBuilder = bodybuilder()
+
     const builder = new Builder(jest.fn())
     builder.orderBy('foo')
 
@@ -243,17 +216,15 @@ describe('ElasticsearchDriver', () => {
     })
 
     expect(query).toEqual({
-      query: {
-        sort: [
-          {
-            foo: {
-              order: 'asc'
-            }
+      sort: [
+        {
+          foo: {
+            order: 'asc'
           }
-        ],
-        search_after: ['cursor'],
-        size: 20
-      }
+        }
+      ],
+      search_after: ['cursor'],
+      size: 20
     })
   })
 
@@ -606,8 +577,38 @@ describe('ElasticsearchTransport', () => {
     nock.removeInterceptor(interceptor)
   })
 
+  it('_query correctly composes match_all query', () => {
+    const elasticsearch = new ElasticsearchDriver()
+    elasticsearch.queryBuilder = bodybuilder()
+
+    const query = elasticsearch._query('*').build()
+
+    expect(query).toEqual({
+      'query': {
+        'match_all': {}
+      }
+    })
+  })
+
+  it('_query correctly composes query_string query', () => {
+    const elasticsearch = new ElasticsearchDriver()
+    elasticsearch.queryBuilder = bodybuilder()
+
+    const query = elasticsearch._query('foo').build()
+
+    expect(query).toEqual({
+      'query': {
+        'query_string': {
+          'query': 'foo'
+        }
+      }
+    })
+  })
+
   it('_where correctly composes AND query', () => {
     const elasticsearch = new ElasticsearchDriver()
+    elasticsearch.queryBuilder = bodybuilder()
+
     const query = elasticsearch._where([
       {
         grouping: 'where',
@@ -618,19 +619,23 @@ describe('ElasticsearchTransport', () => {
         not: false,
         bool: 'and'
       }
-    ])
+    ]).build()
 
     expect(query).toEqual({
-      bool: {
-        must: [
-          { term: { 'foo': 'bar' } }
-        ]
+      query: {
+        bool: {
+          filter: {
+            term: { 'foo': 'bar' }
+          }
+        }
       }
     })
   })
 
   it('_where correctly composes NOT-AND query', () => {
     const elasticsearch = new ElasticsearchDriver()
+    elasticsearch.queryBuilder = bodybuilder()
+
     const query = elasticsearch._where([
       {
         grouping: 'where',
@@ -641,19 +646,27 @@ describe('ElasticsearchTransport', () => {
         not: true,
         bool: 'and'
       }
-    ])
+    ]).build()
 
     expect(query).toEqual({
-      bool: {
-        must_not: [
-          { term: { 'foo': 'bar' } }
-        ]
+      query: {
+        bool: {
+          filter: {
+            bool: {
+              must_not: [
+                { term: { 'foo': 'bar' } }
+              ]
+            }
+          }
+        }
       }
     })
   })
 
   it('_where correctly composes OR query', () => {
     const elasticsearch = new ElasticsearchDriver()
+    elasticsearch.queryBuilder = bodybuilder()
+
     const query = elasticsearch._where([
       {
         grouping: 'where',
@@ -664,19 +677,27 @@ describe('ElasticsearchTransport', () => {
         not: false,
         bool: 'or'
       }
-    ])
+    ]).build()
 
     expect(query).toEqual({
-      bool: {
-        should: [
-          { term: { 'foo': 'bar' } }
-        ]
+      query: {
+        bool: {
+          filter: {
+            bool: {
+              should: [
+                { term: { 'foo': 'bar' } }
+              ]
+            }
+          }
+        }
       }
     })
   })
 
   it('_where correctly composes NOT-OR query', () => {
     const elasticsearch = new ElasticsearchDriver()
+    elasticsearch.queryBuilder = bodybuilder()
+
     const query = elasticsearch._where([
       {
         grouping: 'where',
@@ -687,25 +708,38 @@ describe('ElasticsearchTransport', () => {
         not: true,
         bool: 'or'
       }
-    ])
+    ]).build()
 
     expect(query).toEqual({
-      bool: {
-        should: [
-          { bool: { must_not: { term: { 'foo': 'bar' } } } }
-        ]
+      query: {
+        bool: {
+          filter: {
+            bool: {
+              should: [
+                {
+                  bool: {
+                    must_not: [
+                      { term: { 'foo': 'bar' } }
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        }
       }
     })
   })
 
   it('_buildQueryDSL correctly composes complex where query', () => {
-    const builder = new Builder(jest.fn())
     const elasticsearch = new ElasticsearchDriver()
+    elasticsearch.queryBuilder = bodybuilder()
 
-    builder.where('productId', '=', 'foo')
+    const builder = new Builder(jest.fn())
+    builder.where('type', '=', 'physical')
     builder.orWhere(function () {
-      this.where('productId', '=', 'bar')
-      this.where('price', '=', 30)
+      this.where('type', '=', 'download')
+      this.where('category', '=', 'other')
     })
 
     const query = elasticsearch._buildQueryDSL(builder)
@@ -713,19 +747,33 @@ describe('ElasticsearchTransport', () => {
     expect(query).toEqual({
       query: {
         bool: {
-          must: [
-            { term: { 'productId': 'foo' } }
-          ],
-          should: [
-            {
-              bool: {
-                must: [
-                  { term: { 'productId': 'bar' } },
-                  { term: { 'price': 30 } }
-                ]
-              }
+          filter: {
+            bool: {
+              must: {
+                term: {
+                  'type': 'physical'
+                }
+              },
+              should: [
+                {
+                  bool: {
+                    must: [
+                      {
+                        term: {
+                          'type': 'download'
+                        }
+                      },
+                      {
+                        term: {
+                          'category': 'other'
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
             }
-          ]
+          }
         }
       }
     })
@@ -752,7 +800,7 @@ describe('ElasticsearchTransport', () => {
       value: 'bar'
     })
 
-    expect(query).toEqual({ term: { 'foo': 'bar' } })
+    expect(query).toEqual(['term', { 'foo': 'bar' }])
   })
 
   it('_whereBasic correctly composes greater than query', () => {
@@ -761,7 +809,7 @@ describe('ElasticsearchTransport', () => {
       field: 'foo', operator: '>', value: 1
     })
 
-    expect(query).toEqual({ range: { 'foo': { 'gt': 1 } } })
+    expect(query).toEqual(['range', { 'foo': { 'gt': 1 } }])
   })
 
   it('_whereBasic correctly composes less than query', () => {
@@ -770,7 +818,7 @@ describe('ElasticsearchTransport', () => {
       field: 'foo', operator: '>', value: 1
     })
 
-    expect(query).toEqual({ range: { 'foo': { 'gt': 1 } } })
+    expect(query).toEqual(['range', { 'foo': { 'gt': 1 } }])
   })
 
   it('_whereBasic correctly composes greater than or equal to query', () => {
@@ -779,16 +827,16 @@ describe('ElasticsearchTransport', () => {
       field: 'foo', operator: '>=', value: 1
     })
 
-    expect(query).toEqual({ range: { 'foo': { 'gte': 1 } } })
+    expect(query).toEqual(['range', { 'foo': { 'gte': 1 } }])
   })
 
-  it('_whereBasic correctly composes greater than or equal to query', () => {
+  it('_whereBasic correctly composes less than or equal to query', () => {
     const elasticsearch = new ElasticsearchDriver()
     const query = elasticsearch._whereBasic({
       field: 'foo', operator: '<=', value: 1
     })
 
-    expect(query).toEqual({ range: { 'foo': { 'lte': 1 } } })
+    expect(query).toEqual(['range', { 'foo': { 'lte': 1 } }])
   })
 
   it('_whereWrapped correctly composes function query', () => {
@@ -799,13 +847,20 @@ describe('ElasticsearchTransport', () => {
       this.where('foo', '=', 'bar')
     })
 
-    const query = elasticsearch._whereWrapped(builder.statements[0])
+    const query = elasticsearch._whereWrapped(
+      bodybuilder(),
+      builder.statements[0]
+    ).build()
 
     expect(query).toEqual({
-      bool: {
-        must: [
-          { term: { foo: 'bar' } }
-        ]
+      'query': {
+        'bool': {
+          'filter': {
+            'term': {
+              'foo': 'bar'
+            }
+          }
+        }
       }
     })
   })
@@ -814,11 +869,12 @@ describe('ElasticsearchTransport', () => {
 it('_order correctly composes partial DSL', () => {
   const builder = new Builder(jest.fn())
   const elasticsearch = new ElasticsearchDriver()
+  elasticsearch.queryBuilder = bodybuilder()
 
   builder.orderBy('foo')
   builder.orderBy('bar', 'desc')
 
-  const query = elasticsearch._order(builder.statements)
+  const query = elasticsearch._order(builder.statements).build()
 
   expect(query).toEqual({
     sort: [
@@ -831,26 +887,28 @@ it('_order correctly composes partial DSL', () => {
 it('_orderByBasic correctly composes partial query DSL', () => {
   const builder = new Builder(jest.fn())
   const elasticsearch = new ElasticsearchDriver()
+  elasticsearch.queryBuilder = bodybuilder()
 
   builder.orderBy('foo', 'desc')
 
-  const query = elasticsearch._orderByBasic(builder.statements[0])
+  const query = elasticsearch._orderByBasic(builder.statements[0]).build()
 
   expect(query).toEqual({
-    foo: {
-      order: 'desc'
-    }
+    sort: [
+      { foo: { order: 'desc' } }
+    ]
   })
 })
 
 it('_aggregate correctly composes partial query DSL', () => {
   const builder = new Builder(jest.fn())
   const elasticsearch = new ElasticsearchDriver()
+  elasticsearch.queryBuilder = bodybuilder()
 
   builder.aggregate('max', 'price')
   builder.aggregate('min', 'quantity')
 
-  const query = elasticsearch._aggregate(builder.statements)
+  const query = elasticsearch._aggregate(builder.statements).build()
 
   expect(query).toEqual({
     aggs: {
@@ -871,15 +929,18 @@ it('_aggregate correctly composes partial query DSL', () => {
 it('_aggregateBasic correctly composes partial query DSL', () => {
   const builder = new Builder(jest.fn())
   const elasticsearch = new ElasticsearchDriver()
+  elasticsearch.queryBuilder = bodybuilder()
 
   builder.aggregate('max', 'price')
 
-  const query = elasticsearch._aggregateBasic(builder.statements[0])
+  const query = elasticsearch._aggregateBasic(builder.statements[0]).build()
 
   expect(query).toEqual({
-    agg_max_price: {
-      max: {
-        field: 'price'
+    aggs: {
+      agg_max_price: {
+        max: {
+          field: 'price'
+        }
       }
     }
   })
@@ -888,9 +949,11 @@ it('_aggregateBasic correctly composes partial query DSL', () => {
 class SearchRuleStub extends SearchRule {
   buildQuery () {
     return {
-      must: {
-        query_string: {
-          query: this.builder.query
+      bool: {
+        must: {
+          query_string: {
+            query: this.builder.query
+          }
         }
       }
     }
@@ -900,8 +963,12 @@ class SearchRuleStub extends SearchRule {
 class OtherSearchRuleStub extends SearchRule {
   buildQuery () {
     return {
-      match: {
-        foo: this.builder.query
+      bool: {
+        must: {
+          match: {
+            foo: this.builder.query
+          }
+        }
       }
     }
   }
