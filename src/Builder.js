@@ -103,7 +103,10 @@ class Builder extends Macroable {
       throw CE.LogicalException.ruleNotSupported(ruleClass)
     }
 
-    this._rules.push(ruleClass)
+    // Override every pre-existing rule
+    // @todo check if we need to support multiple rules at same time
+    this._rules = [ruleClass]
+
     return this
   }
 
@@ -213,6 +216,13 @@ class Builder extends Macroable {
     return this
   }
 
+  /**
+   * Compiles the callback function as new builder instance.
+   *
+   * @param {Function} callback
+   *
+   * @return {Builder}
+   */
   _compileCallback (callback) {
     const builder = new this.constructor(this.model)
     return () => {

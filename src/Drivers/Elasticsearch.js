@@ -3,7 +3,8 @@
 const AbstractDriver = require('./Abstract')
 const ElasticsearchClient = require('elasticsearch').Client
 const Promise = require('bluebird')
-const { get, map, filter, groupBy, pickBy, size } = require('lodash')
+const bodybuilder = require('bodybuilder')
+const { get, map, filter, groupBy, toLower, merge } = require('lodash')
 const debug = require('debug')('scout:elasticsearch')
 const { InvalidArgumentException } = require('../Exceptions')
 
@@ -29,6 +30,7 @@ class Elasticsearch extends AbstractDriver {
 
     this.config = config
     this.transporter = new ElasticsearchTransporter(this.config)
+    this.queryBuilder = null
   }
 
   /**
@@ -121,6 +123,11 @@ class Elasticsearch extends AbstractDriver {
     const index = builder.index || builder.model.searchableAs()
 
     /**
+     * Creates new queryBuilder instance
+     */
+    this.queryBuilder = bodybuilder()
+
+    /**
      * Build full query DSL.
      */
     const queryDSL = this._buildQueryDSL(builder, options)
@@ -137,20 +144,20 @@ class Elasticsearch extends AbstractDriver {
    *
    * @param {Builder} builder
    * @param {Object} customOptions
+   * @param {Boolean} build
    *
-   * @return {Object}
+   * @return {Object|bodybuilder}
    */
-  _buildQueryDSL (builder, customOptions = {}) {
+  _buildQueryDSL (builder, customOptions = {}, build = true) {
     const options = Object.assign({ page: null, limit: null }, customOptions)
-    const queryBlocks = []
 
     /**
      * Matches the query terms either directly or via search rules.
      */
     if (builder.hasRules()) {
-      queryBlocks.push(this._rules(builder.buildRules()))
+      this._rules(builder.buildRules())
     } else {
-      queryBlocks.push(this._query(builder.query))
+      this._query(builder.query)
     }
 
     /**
@@ -167,28 +174,27 @@ class Elasticsearch extends AbstractDriver {
      * Loop through each query component building it separately.
      */
     components.forEach(component => {
-      queryBlocks.push(this[`_${component}`](stmts[component]))
+      this[`_${component}`](stmts[component])
     })
 
     /**
      * Determine the results offset when paginating by page number
      */
-    queryBlocks.push(this._buildFrom(options.page, options.limit))
+    this._buildFrom(options.page, options.limit)
 
     /**
      * Determine the number of results to bring back when paginating
      */
-    queryBlocks.push(this._buildSize(options.limit))
+    this._buildSize(options.limit)
 
     /**
      * Determine the last previous result when paginating by cursor
      */
-    queryBlocks.push(this._buildAfter(options.after))
+    this._buildAfter(options.after)
 
-    let fullQuery = {}
-    queryBlocks.forEach(block => Object.assign(fullQuery, block))
+    // @todo merge search rules
 
-    return { query: fullQuery }
+    return build ? this.queryBuilder.build() : this.queryBuilder
   }
 
   /**
@@ -200,86 +206,69 @@ class Elasticsearch extends AbstractDriver {
    */
   _rules (rules) {
     if (!rules) return {}
-    const ruleBlocks = rules.map(query => ({ bool: query }))
 
-    return {
-      bool: {
-        must: [
-          ...ruleBlocks
-        ]
-      }
-    }
+    const compiled = {}
+    rules.forEach(rule => merge(compiled, rule))
+
+    return this.queryBuilder.rawOption('query', compiled)
   }
 
   /**
-   * Build the search for the given terms.
+   * Build the `query` part of the query.
    *
    * @param {Null|String} query
    *
-   * @return {Object}
+   * @return {bodybuilder}
    */
   _query (query) {
     if (!query) return {}
-    if (query === '*') return { match_all: {} }
-
-    return {
-      query_string: {
-        query
-      }
+    if (query === '*') {
+      return this.queryBuilder.query('match_all')
     }
+
+    return this.queryBuilder.query('query_string', 'query', query)
   }
 
   /**
-   * Build the filters part of the query.
+   * Build the `filter` part of the query.
    *
    * @param {Array} stmts
    *
-   * @return {Object}
+   * @return {bodybuilder}
    */
-  _where (stmts) {
+  _where (stmts, queryBuilder = null) {
     if (!stmts) return {}
 
-    const bool = {
-      /**
-       * All of these clauses must match. The equivalent of AND.
-       */
-      must: [],
-
-      /**
-       * All of these clauses must not match. The equivalent of NOT.
-       */
-      must_not: [],
-
-      /**
-       * At least one of these clauses must match. The equivalent of OR.
-       */
-      should: [],
-
-      /**
-       * Non-scoring, filters for structured search.
-       */
-      filter: []
-    }
+    queryBuilder = queryBuilder || this.queryBuilder
 
     stmts.forEach(stmt => {
-      let value = this[`_${stmt.type}`](stmt)
+      /**
+       * Only executes `whereWrapped` since it should apply
+       * changes directly to the query builder.
+       * There is no need to apply it manually.
+       */
+      if (stmt.type === 'whereWrapped') {
+        const method = stmt.bool === 'and' ? 'filter' : 'orFilter'
+
+        // @todo check not clause
+
+        return queryBuilder[method]('bool', qb => {
+          return this._whereWrapped(qb, stmt)
+        })
+      }
+
+      let [type, value] = this[`_${stmt.type}`](stmt)
 
       if (stmt.bool === 'and') {
-        bool[stmt.not ? 'must_not' : 'must'].push(value)
-      } else if (stmt.bool === 'or' && !stmt.not) {
-        bool.should.push(value)
+        queryBuilder[stmt.not ? 'notFilter' : 'filter'](type, value)
+      } else if (stmt.bool === 'or' && stmt.not === false) {
+        queryBuilder.orFilter(type, value)
       } else if (stmt.bool === 'or' && stmt.not) {
-        bool.should.push({
-          bool: {
-            must_not: value
-          }
-        })
+        queryBuilder.orFilter('bool', q => q.notFilter(type, value))
       }
     })
 
-    return {
-      bool: pickBy(bool, size)
-    }
+    return queryBuilder
   }
 
   /**
@@ -290,31 +279,28 @@ class Elasticsearch extends AbstractDriver {
    * @return {Object}
    */
   _whereBasic (stmt) {
-    switch (stmt.operator) {
+    switch (toLower(stmt.operator)) {
       default:
         throw InvalidArgumentException.invalidParameter(
           `Operator not supported: ${stmt.operator}`
         )
 
       case '=':
-        return {
-          term: {
-            [stmt.field]: stmt.value
-          }
-        }
+        return ['term', { [stmt.field]: stmt.value }]
+
+      case 'in':
+        return ['terms', { [stmt.field]: stmt.value }]
 
       case '>':
       case '<':
       case '>=':
       case '<=':
         const rangeOperator = this._getRangeOperator(stmt.operator)
-        return {
-          range: {
-            [stmt.field]: {
-              [rangeOperator]: stmt.value
-            }
+        return ['range', {
+          [stmt.field]: {
+            [rangeOperator]: stmt.value
           }
-        }
+        }]
     }
   }
 
@@ -338,15 +324,16 @@ class Elasticsearch extends AbstractDriver {
   /**
    * Build the `whereWrapped` filter statements.
    *
+   * @param {bodybuilder} queryBuilder
    * @param {Object} stmt
    *
-   * @return {Object}
+   * @return {bodybuilder}
    */
-  _whereWrapped (stmt) {
+  _whereWrapped (queryBuilder, stmt) {
     const builder = stmt.value()
-    const { query } = this._buildQueryDSL(builder)
+    const stmts = filter(builder.statements, ['grouping', 'where'])
 
-    return query
+    return this._where(stmts, queryBuilder)
   }
 
   /**
@@ -359,14 +346,9 @@ class Elasticsearch extends AbstractDriver {
   _order (stmts) {
     if (!stmts) return {}
 
-    const sort = []
+    stmts.forEach(stmt => this[`_${stmt.type}`](stmt))
 
-    stmts.forEach(stmt => {
-      let value = this[`_${stmt.type}`](stmt)
-      sort.push(value)
-    })
-
-    return { sort }
+    return this.queryBuilder
   }
 
   /**
@@ -379,11 +361,7 @@ class Elasticsearch extends AbstractDriver {
   _orderByBasic (stmt) {
     if (!stmt) return {}
 
-    return {
-      [stmt.value]: {
-        order: stmt.direction
-      }
-    }
+    return this.queryBuilder.sort(stmt.value, stmt.direction)
   }
 
   /**
@@ -396,13 +374,9 @@ class Elasticsearch extends AbstractDriver {
   _aggregate (stmts) {
     if (!stmts) return {}
 
-    const aggs = {}
-    stmts.forEach(stmt => {
-      let value = this[`_${stmt.type}`](stmt)
-      Object.assign(aggs, value)
-    })
+    stmts.forEach(stmt => this[`_${stmt.type}`](stmt))
 
-    return { aggs }
+    return this.queryBuilder
   }
 
   /**
@@ -415,42 +389,34 @@ class Elasticsearch extends AbstractDriver {
   _aggregateBasic (stmt) {
     if (!stmt) return {}
 
-    return {
-      [`agg_${stmt.method}_${stmt.value}`]: {
-        [stmt.method]: {
-          field: stmt.value
-        }
-      }
-    }
+    return this.queryBuilder.agg(stmt.method, stmt.value)
   }
 
   /**
-   * Build the size part of the query.
+   * Build the `from` part of the query.
    *
    * @param {Number} page
    * @param {Number} limit
    *
-   * @return {Object}
+   * @return {bodybuilder}
    */
   _buildFrom (page, limit) {
     if (!page || !limit) return {}
 
-    return {
-      from: (page - 1) * limit
-    }
+    return this.queryBuilder.from((page - 1) * limit)
   }
 
   /**
-   * Build the size part of the query.
+   * Build the `size` part of the query.
    *
    * @param {Number} size
    *
-   * @return {Object}
+   * @return {bodybuilder}
    */
   _buildSize (size) {
     if (!size) return {}
 
-    return { size }
+    return this.queryBuilder.size(size)
   }
 
   /**
@@ -458,12 +424,12 @@ class Elasticsearch extends AbstractDriver {
    *
    * @param {*} cursor
    *
-   * @return {Object}
+   * @return {bodybuilder}
    */
   _buildAfter (cursor) {
     if (!cursor) return {}
 
-    return { search_after: cursor }
+    return this.queryBuilder.rawOption('search_after', cursor)
   }
 
   /**
