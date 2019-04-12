@@ -55,16 +55,18 @@ class Elasticsearch extends AbstractDriver {
     await this.transporter.initIndex(index)
 
     /**
+     * Stores all serialization promises to work with later
+     */
+    const bulk = models.map(async model => ({
+      id: model.getSearchableKey(),
+      data: await model.toSearchableJSON()
+    }))
+
+    /**
      * Save serialized models to the search engine, using the result
      * from `model.getSearchableKey()` as object id.
      */
-    return this.transporter.indexBulk(
-      index,
-      models.map(model => ({
-        id: model.getSearchableKey(),
-        data: model.toSearchableJSON()
-      }))
-    )
+    return this.transporter.indexBulk(index, await Promise.all(bulk))
   }
 
   /**
