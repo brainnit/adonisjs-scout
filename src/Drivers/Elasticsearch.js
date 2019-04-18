@@ -25,7 +25,7 @@ class Elasticsearch extends AbstractDriver {
    */
   setConfig (config = {}) {
     // Toggle debugging
-    debug.enable = !!config.debug
+    debug.enabled = !!config.debug
     debug('booting elasticsearch driver')
 
     this.config = config
