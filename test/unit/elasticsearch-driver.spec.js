@@ -44,7 +44,7 @@ describe('ElasticsearchDriver', () => {
     expect(elasticsearch).toBeInstanceOf(ElasticsearchDriver)
   })
 
-  it('update adds objects to index', () => {
+  it('update adds objects to index', async () => {
     expect.assertions(3)
 
     const elasticsearch = new ElasticsearchDriver()
@@ -70,7 +70,7 @@ describe('ElasticsearchDriver', () => {
     })
 
     const collection = new VanillaSerializer([ modelMock ])
-    elasticsearch.update(collection)
+    await elasticsearch.update(collection)
 
     expect(elasticsearch.transporter.initIndex).toHaveBeenCalledWith('table')
   })
@@ -148,7 +148,7 @@ describe('ElasticsearchDriver', () => {
     elasticsearch.queryBuilder = bodybuilder()
 
     const modelMock = jest.fn()
-    modelMock.searchableRules = jest.fn(() => ['SearchRuleStub'])
+    modelMock.constructor.searchableRules = jest.fn(() => ['SearchRuleStub'])
 
     const builder = new Builder(modelMock, 'foobar')
     builder.rule('SearchRuleStub')
