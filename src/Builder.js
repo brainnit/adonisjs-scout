@@ -93,7 +93,7 @@ class Builder extends Macroable {
    * @return {Builder} this
    */
   rule (ruleClass) {
-    let modelRules = this.model.searchableRules()
+    let modelRules = this.model.constructor.searchableRules()
 
     if (typeof modelRules === 'string') {
       modelRules = [ modelRules ]
