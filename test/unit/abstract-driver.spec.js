@@ -3,6 +3,7 @@
 require('dotenv').load()
 const AbstractDriver = require('../../src/Drivers/Abstract')
 const TestDriver = require('./fixtures/TestDriver')
+const Builder = require('../../src/Builder')
 const { LogicalException } = require('../../src/Exceptions')
 
 describe('AbstractDriver', () => {
@@ -77,12 +78,9 @@ describe('AbstractDriver', () => {
   })
 
   it('cursors returns all columns being ordered', () => {
-    const builder = jest.fn()
-    builder.model = jest.fn()
-    builder.orders = [
-      { field: 'foo', direction: 'asc' },
-      { field: 'bar', direction: 'desc' }
-    ]
+    const builder = new Builder(jest.fn())
+    builder.orderBy('foo', 'asc')
+    builder.orderBy('bar', 'desc')
 
     const stubDriver = new TestDriver()
     const cursors = stubDriver.cursors(builder)
