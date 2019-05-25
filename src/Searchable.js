@@ -369,7 +369,11 @@ class Searchable {
      * @return {Array}
      */
     Model.prototype.getSearchableCursor = function (columns) {
-      return columns.map(column => this[column])
+      return columns.map(column =>
+        this.constructor.dates.includes(column)
+          ? this[column].valueOf()
+          : this[column]
+      )
     }
   }
 
