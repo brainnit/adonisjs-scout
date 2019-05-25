@@ -222,11 +222,16 @@ describe('Searchable', () => {
   })
 
   it('getSearchableCursor correctly returns model cursor', () => {
+    const now = new Date('now')
     const model = new ModelStub()
     model.a = 'foo'
-    model.b = 'bar'
+    model.created_at = now
 
-    expect(model.getSearchableCursor(['a', 'b'])).toEqual(['foo', 'bar'])
+    expect(
+      model.getSearchableCursor(['a', 'created_at'])
+    ).toEqual(
+      ['foo', now.valueOf()]
+    )
   })
 
   it('getSearchableCursor returns empty array if given empty columns', () => {
@@ -242,6 +247,10 @@ class ModelStub extends Model {
 
   static get table () {
     return 'stubs'
+  }
+
+  static get dates () {
+    return 'created_at'
   }
 }
 
