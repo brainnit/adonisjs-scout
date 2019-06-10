@@ -353,7 +353,14 @@ class Searchable {
         builder.queryCallback(query)
       }
 
-      return query.whereIn(Model.getSearchableKeyName(), ids).fetch()
+      const orderRules = ids.map((v, i) => `when ? then ${i}`)
+
+      return query.whereIn(Model.getSearchableKeyName(), ids)
+        .orderByRaw(
+          `case ${Model.getSearchableKeyName()} ${orderRules.join(' ')} end`,
+          ids
+        )
+        .fetch()
     }
 
     /**
