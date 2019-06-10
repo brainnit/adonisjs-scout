@@ -11,6 +11,10 @@ class TestModel extends Model {
   static get table () {
     return 'stubs'
   }
+
+  static castDates (field, value) {
+    return value.toISOString()
+  }
 }
 
 module.exports = TestModel

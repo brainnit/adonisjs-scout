@@ -8,6 +8,12 @@ const { get, map, filter, groupBy, toLower, merge } = require('lodash')
 const debug = require('debug')('scout:elasticsearch')
 const { InvalidArgumentException } = require('../Exceptions')
 
+const proxyMethods = [
+  'createIndex',
+  'updateIndex',
+  'deleteIndex'
+]
+
 /**
  * @typedef {import('../Builder')} Builder
  */
@@ -525,7 +531,7 @@ class Elasticsearch extends AbstractDriver {
          * the object ids returned from elasticsearch
          */
         collection.rows = filter(collection.rows, model => {
-          return objectIds.includes(model.getSearchableKey())
+          return objectIds.includes(`${model.getSearchableKey()}`)
         })
 
         return collection
@@ -669,6 +675,33 @@ class ElasticsearchTransporter {
   }
 
   /**
+   * Deletes the given search index.
+   *
+   * @param {String} index
+   * @param {Object} params
+   *
+   * @return {Boolean}
+   */
+  deleteIndex (index, params = {}) {
+    const requestPayload = {
+      index,
+      body: { ...params }
+    }
+
+    debug(`Deleting index with %o`, requestPayload)
+
+    return new Promise((resolve, reject) => {
+      this.Client.indices.delete(requestPayload, (error, result) => {
+        if (error) {
+          reject(error)
+        } else {
+          resolve(result)
+        }
+      })
+    })
+  }
+
+  /**
    * Add/Update objects to Elasticsearch index.
    *
    * @async
@@ -689,7 +722,7 @@ class ElasticsearchTransporter {
       )
     })
 
-    debug(`Removing from index with %o`, requestPayload)
+    debug(`Bulk indexing with %o`, requestPayload)
 
     return new Promise((resolve, reject) => {
       this.Client.bulk(requestPayload, (error, result) => {
@@ -799,6 +832,12 @@ class ElasticsearchTransporter {
     })
   }
 }
+
+proxyMethods.forEach(method => {
+  Elasticsearch.prototype[method] = function (...params) {
+    return this.transporter[method](...params)
+  }
+})
 
 module.exports = Elasticsearch
 module.exports.Transport = ElasticsearchTransporter
