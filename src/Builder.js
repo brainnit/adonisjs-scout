@@ -131,6 +131,8 @@ class Builder extends Macroable {
   /**
    * Helper to get or set the `notFlag` value.
    *
+   * @chainable
+   *
    * @param {Boolean} value
    *
    * @return {*}
@@ -166,7 +168,7 @@ class Builder extends Macroable {
       return this.whereWrapped(field)
     }
 
-    this._statements.push({
+    const stmt = {
       grouping: 'where',
       type: 'whereBasic',
       field,
@@ -174,7 +176,21 @@ class Builder extends Macroable {
       value,
       not: this._not(),
       bool: this._bool()
-    })
+    }
+
+    /**
+     * Mutates the statement if we are searching for something
+     * "that is different than whatever" to apply the equal operator
+     * and invert the `not` flag
+     */
+    if (['!=', '<>'].includes(operator)) {
+      Object.assign(stmt, {
+        operator: '=',
+        not: !!stmt.not
+      })
+    }
+
+    this._statements.push(stmt)
 
     return this
   }
@@ -191,8 +207,37 @@ class Builder extends Macroable {
    * @return {Builder} this
    */
   orWhere () {
-    this._bool('or')
-    return this.where.apply(this, arguments)
+    return this._bool('or').where.apply(this, arguments)
+  }
+
+  /**
+   * Adds an `not where` clause to the query.
+   *
+   * @chainbale
+   *
+   * @param {String|Function} field
+   * @param {String} operator
+   * @param {*} value
+   *
+   * @return {Builder} this
+   */
+  whereNot () {
+    return this._not(true).where.apply(this, arguments)
+  }
+
+  /**
+   * Adds an `or not where` clause to the query.
+   *
+   * @chainbale
+   *
+   * @param {String|Function} field
+   * @param {String} operator
+   * @param {*} value
+   *
+   * @return {Builder} this
+   */
+  orWhereNot () {
+    return this._bool('or').whereNot.apply(this, arguments)
   }
 
   /**
