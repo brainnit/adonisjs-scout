@@ -25,12 +25,12 @@ describe('Builder', () => {
 
   it('where adds whereBasic statement', () => {
     const builder = new Builder(jest.fn(), 'query')
-    builder.where('foo', 'match', 'bar')
+    builder.where('foo', '=', 'bar')
     expect(builder._statements).toContainEqual({
       grouping: 'where',
       type: 'whereBasic',
       field: 'foo',
-      operator: 'match',
+      operator: '=',
       value: 'bar',
       not: false,
       bool: 'and'
@@ -48,6 +48,48 @@ describe('Builder', () => {
       value: expect.any(Function),
       not: false,
       bool: 'and'
+    })
+  })
+
+  it('orWhere adds OR whereBasic statement', () => {
+    const builder = new Builder(jest.fn(), 'query')
+    builder.orWhere('foo', '=', 'bar')
+    expect(builder._statements).toContainEqual({
+      grouping: 'where',
+      type: 'whereBasic',
+      field: 'foo',
+      operator: '=',
+      value: 'bar',
+      not: false,
+      bool: 'or'
+    })
+  })
+
+  it('whereNot adds NOT whereBasic statement', () => {
+    const builder = new Builder(jest.fn(), 'query')
+    builder.whereNot('foo', '=', 'bar')
+    expect(builder._statements).toContainEqual({
+      grouping: 'where',
+      type: 'whereBasic',
+      field: 'foo',
+      operator: '=',
+      value: 'bar',
+      not: true,
+      bool: 'and'
+    })
+  })
+
+  it('orWhereNot adds OR NOT whereBasic statement', () => {
+    const builder = new Builder(jest.fn(), 'query')
+    builder.orWhereNot('foo', '=', 'bar')
+    expect(builder._statements).toContainEqual({
+      grouping: 'where',
+      type: 'whereBasic',
+      field: 'foo',
+      operator: '=',
+      value: 'bar',
+      not: true,
+      bool: 'or'
     })
   })
 
