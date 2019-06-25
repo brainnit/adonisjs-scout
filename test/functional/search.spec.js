@@ -3,9 +3,11 @@
 require('@adonisjs/lucid/lib/iocResolver').setFold(require('@adonisjs/fold'))
 const fs = require('fs-extra')
 const path = require('path')
+const sleep = require('sleep-promise')
 const { ioc, registrar } = require('@adonisjs/fold')
 const { Config, setupResolver, Helpers } = require('@adonisjs/sink')
 const Model = require('@adonisjs/lucid/src/Lucid/Model')
+
 const setup = require('../unit/fixtures/setup')
 
 beforeAll(async () => {
@@ -17,7 +19,7 @@ beforeAll(async () => {
       sqlite: {
         client: 'sqlite',
         connection: {
-          filename: path.join(__dirname, '../tmp/testing.sqlite3')
+          filename: path.join(__dirname, '../../testing.sqlite3')
         }
       }
     })
@@ -67,29 +69,34 @@ beforeAll(async () => {
   setupResolver()
 
   await setup.setupTables(ioc.use('Database'))
+  await setup.setupIndexes(ioc.use('Scout'))
 })
 
 afterEach(async () => {
+  const TestModel = require('../unit/fixtures/TestModel')
+  TestModel._bootIfNotBooted()
+  await TestModel.makeAllUnsearchable()
   await setup.truncateTables(ioc.use('Database'))
 })
 
 afterAll(async () => {
+  await setup.dropIndexes(ioc.use('Scout'))
   await setup.dropTables(ioc.use('Database'))
-  ioc.use('Database').close()
 })
 
 describe('search', () => {
-  it('searched results are returned in correct order', async () => {
-    await ioc.use('Database').table('stubs').insert([
-      { title: 'first', created_at: '2017-01-09', updated_at: '2017-01-09' },
-      { title: 'second', created_at: '2018-03-10', updated_at: '2018-03-10' },
-      { title: 'third', created_at: '2019-06-09', updated_at: '2019-06-09' }
+  it('documents can be ordered by date', async () => {
+    await ioc.use('Database').table('posts').insert([
+      { title: 'first', status: 'published', created_at: '2017-01-09', updated_at: '2017-01-09' },
+      { title: 'second', status: 'draft', created_at: '2018-03-10', updated_at: '2018-03-10' },
+      { title: 'third', status: 'archived', created_at: '2019-06-09', updated_at: '2019-06-09' }
     ])
 
     const TestModel = require('../unit/fixtures/TestModel')
     TestModel._bootIfNotBooted()
 
     await TestModel.makeAllSearchable()
+    await sleep(150)
 
     const query = TestModel.search()
     query.orderBy('created_at', 'desc')
@@ -102,6 +109,7 @@ describe('search', () => {
           node: {
             id: 3,
             title: 'third',
+            status: 'archived',
             created_at: '2019-06-09T03:00:00.000Z',
             updated_at: '2019-06-09T03:00:00.000Z'
           },
@@ -111,6 +119,7 @@ describe('search', () => {
           node: {
             id: 2,
             title: 'second',
+            status: 'draft',
             created_at: '2018-03-10T03:00:00.000Z',
             updated_at: '2018-03-10T03:00:00.000Z'
           },
@@ -120,6 +129,7 @@ describe('search', () => {
           node: {
             id: 1,
             title: 'first',
+            status: 'published',
             created_at: '2017-01-09T02:00:00.000Z',
             updated_at: '2017-01-09T02:00:00.000Z'
           },
@@ -131,6 +141,51 @@ describe('search', () => {
         hasPreviousPage: false,
         startCursor: 'WyIyMDE5LTA2LTA5Il0=',
         endCursor: 'WyIyMDE3LTAxLTA5Il0='
+      }
+    })
+  })
+
+  it('documents can be filtered by keyword field', async () => {
+    const TestModel = require('../unit/fixtures/TestModel')
+    TestModel._bootIfNotBooted()
+
+    await TestModel.createMany([
+      { title: 'this is the one', status: 'published' },
+      { title: 'just a draft', status: 'draft' },
+      { title: 'older than gramma', status: 'archived' }
+    ])
+
+    await sleep(150)
+
+    const query = TestModel.search()
+    query.where('status', '!=', 'archived')
+    const results = await query.paginateAfter(null, 10)
+
+    expect(results.toJSON()).toMatchObject({
+      totalCount: 2,
+      edges: [
+        {
+          node: {
+            id: 1,
+            title: 'this is the one',
+            status: 'published'
+          },
+          cursor: 'WzFd'
+        },
+        {
+          node: {
+            id: 2,
+            title: 'just a draft',
+            status: 'draft'
+          },
+          cursor: 'WzJd'
+        }
+      ],
+      pageInfo: {
+        hasNextPage: false,
+        hasPreviousPage: false,
+        startCursor: 'WzFd',
+        endCursor: 'WzJd'
       }
     })
   })

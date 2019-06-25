@@ -13,6 +13,7 @@
   "repository": "git@github.com:brainnit/adonisjs-scout.git",
   "scripts": {
     "test": "jest --coverage --runInBand",
+    "test:watch": "jest --runInBand --watch",
     "lint": "standard"
   },
   "author": "João Pedro Barros <joao@joaopedrobarros.com.br>",
@@ -48,6 +49,7 @@
     "jest": "^24.1.0",
     "nock": "^10.0.6",
     "sinon": "^7.2.4",
+    "sleep-promise": "^8.0.1",
     "sqlite3": "^4.0.6",
     "standard": "^12.0.1"
   },

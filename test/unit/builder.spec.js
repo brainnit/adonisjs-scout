@@ -37,6 +37,34 @@ describe('Builder', () => {
     })
   })
 
+  it('where adds NOT whereBasic statement when `!=` is used as operator', () => {
+    const builder = new Builder(jest.fn(), 'query')
+    builder.where('foo', '!=', 'bar')
+    expect(builder._statements).toContainEqual({
+      grouping: 'where',
+      type: 'whereBasic',
+      field: 'foo',
+      operator: '=',
+      value: 'bar',
+      not: true,
+      bool: 'and'
+    })
+  })
+
+  it('where adds NOT whereBasic statement when `<>` is used as operator', () => {
+    const builder = new Builder(jest.fn(), 'query')
+    builder.where('foo', '<>', 'bar')
+    expect(builder._statements).toContainEqual({
+      grouping: 'where',
+      type: 'whereBasic',
+      field: 'foo',
+      operator: '=',
+      value: 'bar',
+      not: true,
+      bool: 'and'
+    })
+  })
+
   it('where given a callback adds whereWrapped statement', () => {
     const builder = new Builder(jest.fn(), 'query')
     const cb = builder => {}

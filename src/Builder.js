@@ -186,7 +186,7 @@ class Builder extends Macroable {
     if (['!=', '<>'].includes(operator)) {
       Object.assign(stmt, {
         operator: '=',
-        not: !!stmt.not
+        not: !stmt.not
       })
     }
 
