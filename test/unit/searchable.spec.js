@@ -1,6 +1,7 @@
 'use strict'
 
 require('@adonisjs/lucid/lib/iocResolver').setFold(require('@adonisjs/fold'))
+const path = require('path')
 const Model = require('@adonisjs/lucid/src/Lucid/Model')
 const DatabaseManager = require('@adonisjs/lucid/src/Database/Manager')
 const VanillaSerializer = require('@adonisjs/lucid/src/Lucid/Serializers/Vanilla')
@@ -32,7 +33,7 @@ beforeAll(async () => {
       sqlite: {
         client: 'sqlite3',
         connection: {
-          filename: './testing.sqlite'
+          filename: path.join(__dirname, '../../testing.sqlite3')
         },
         useNullAsDefault: true,
         debug: false
@@ -63,32 +64,32 @@ beforeAll(async () => {
   await setup.setupTables(ioc.use('Database'))
 })
 
-afterAll(async () => {
-  await setup.dropTables(ioc.use('Database'))
-})
-
 afterEach(async () => {
   await setup.truncateTables(ioc.use('Database'))
+})
+
+afterAll(async () => {
+  await setup.dropTables(ioc.use('Database'))
 })
 
 describe('Searchable', () => {
   it('searchableAs returns model table', () => {
     const model = new ModelStub()
     ModelStub._bootIfNotBooted()
-    expect(model.searchableAs()).toBe('stubs')
+    expect(model.searchableAs()).toBe('posts')
   })
 
   it('searchableAs returns model table', () => {
     const model = new ModelStub()
     ModelStub._bootIfNotBooted()
-    expect(model.searchableAs()).toBe('stubs')
+    expect(model.searchableAs()).toBe('posts')
   })
 
   it('searchableAs returns prefixed model table', () => {
     const model = new ModelStub()
     ModelStub._bootIfNotBooted()
     ioc.use('Config').set('scout.prefix', 'prefix_')
-    expect(model.searchableAs()).toBe('prefix_stubs')
+    expect(model.searchableAs()).toBe('prefix_posts')
   })
 
   it('shouldBeSearchable returns true by default', () => {
@@ -246,7 +247,7 @@ class ModelStub extends Model {
   }
 
   static get table () {
-    return 'stubs'
+    return 'posts'
   }
 
   static get dates () {
@@ -261,7 +262,7 @@ class AutoSyncDisabledModelStub extends Model {
   }
 
   static get table () {
-    return 'otherstubs'
+    return 'otherposts'
   }
 }
 

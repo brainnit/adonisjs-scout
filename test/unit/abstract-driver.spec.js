@@ -4,6 +4,7 @@ require('dotenv').load()
 const AbstractDriver = require('../../src/Drivers/Abstract')
 const TestDriver = require('./fixtures/TestDriver')
 const Builder = require('../../src/Builder')
+const GlobalSearchableScopes = require('../../src/GlobalSearchableScopes')
 const { LogicalException } = require('../../src/Exceptions')
 
 describe('AbstractDriver', () => {
@@ -78,7 +79,7 @@ describe('AbstractDriver', () => {
   })
 
   it('cursors returns all columns being ordered', () => {
-    const builder = new Builder(jest.fn())
+    const builder = new Builder(new ModelStub())
     builder.orderBy('foo', 'asc')
     builder.orderBy('bar', 'desc')
 
@@ -88,3 +89,9 @@ describe('AbstractDriver', () => {
     expect(cursors).toEqual(['foo', 'bar'])
   })
 })
+
+class ModelStub {
+  static get $globalSearchableScopes () {
+    return new GlobalSearchableScopes()
+  }
+}

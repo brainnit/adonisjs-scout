@@ -18,7 +18,7 @@ beforeAll(async () => {
       sqlite: {
         client: 'sqlite',
         connection: {
-          filename: path.join(__dirname, '../tmp/testing.sqlite3')
+          filename: path.join(__dirname, '../../testing.sqlite3')
         }
       }
     })
@@ -66,7 +66,6 @@ afterEach(async () => {
 
 afterAll(async () => {
   await setup.dropTables(ioc.use('Database'))
-  ioc.use('Database').close()
 
   try {
     await fs.remove(path.join(__dirname, '../tmp'))
@@ -95,7 +94,7 @@ describe('Flush Command', () => {
 
     ioc.bind('App/Models/TestModel', () => TestModel)
 
-    await ioc.use('Database').table('stubs').insert([
+    await ioc.use('Database').table('posts').insert([
       { title: 'foo' },
       { title: 'bar' },
       { title: 'foobar' }

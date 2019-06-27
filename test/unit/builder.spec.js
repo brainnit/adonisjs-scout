@@ -1,30 +1,33 @@
 'use strict'
 
-const Builder = require('../../src/Builder')
 const VanillaSerializer = require('@adonisjs/lucid/src/Lucid/Serializers/Vanilla')
+
+const Builder = require('../../src/Builder')
+const GlobalSearchableScopes = require('../../src/GlobalSearchableScopes')
 
 describe('Builder', () => {
   it('is macroable', () => {
     Builder.macro('foo', () => {
       return 'bar'
     })
-    const builder = new Builder(jest.fn(), 'query')
+
+    const builder = new Builder(new ModelStub(), 'query')
     expect(builder.foo()).toEqual('bar')
   })
 
   it('constructor changes query', () => {
-    const builder = new Builder(jest.fn(), 'foo')
+    const builder = new Builder(new ModelStub(), 'foo')
     expect(builder.query).toEqual('foo')
   })
 
   it('within changes index', () => {
-    const builder = new Builder(jest.fn(), 'query')
+    const builder = new Builder(new ModelStub(), 'query')
     builder.within('foo')
     expect(builder.index).toEqual('foo')
   })
 
   it('where adds whereBasic statement', () => {
-    const builder = new Builder(jest.fn(), 'query')
+    const builder = new Builder(new ModelStub(), 'query')
     builder.where('foo', '=', 'bar')
     expect(builder._statements).toContainEqual({
       grouping: 'where',
@@ -37,8 +40,36 @@ describe('Builder', () => {
     })
   })
 
+  it('where adds NOT whereBasic statement when `!=` is used as operator', () => {
+    const builder = new Builder(new ModelStub(), 'query')
+    builder.where('foo', '!=', 'bar')
+    expect(builder._statements).toContainEqual({
+      grouping: 'where',
+      type: 'whereBasic',
+      field: 'foo',
+      operator: '=',
+      value: 'bar',
+      not: true,
+      bool: 'and'
+    })
+  })
+
+  it('where adds NOT whereBasic statement when `<>` is used as operator', () => {
+    const builder = new Builder(new ModelStub(), 'query')
+    builder.where('foo', '<>', 'bar')
+    expect(builder._statements).toContainEqual({
+      grouping: 'where',
+      type: 'whereBasic',
+      field: 'foo',
+      operator: '=',
+      value: 'bar',
+      not: true,
+      bool: 'and'
+    })
+  })
+
   it('where given a callback adds whereWrapped statement', () => {
-    const builder = new Builder(jest.fn(), 'query')
+    const builder = new Builder(new ModelStub(), 'query')
     const cb = builder => {}
     builder.where(cb)
 
@@ -52,7 +83,7 @@ describe('Builder', () => {
   })
 
   it('orWhere adds OR whereBasic statement', () => {
-    const builder = new Builder(jest.fn(), 'query')
+    const builder = new Builder(new ModelStub(), 'query')
     builder.orWhere('foo', '=', 'bar')
     expect(builder._statements).toContainEqual({
       grouping: 'where',
@@ -66,7 +97,7 @@ describe('Builder', () => {
   })
 
   it('whereNot adds NOT whereBasic statement', () => {
-    const builder = new Builder(jest.fn(), 'query')
+    const builder = new Builder(new ModelStub(), 'query')
     builder.whereNot('foo', '=', 'bar')
     expect(builder._statements).toContainEqual({
       grouping: 'where',
@@ -80,7 +111,7 @@ describe('Builder', () => {
   })
 
   it('orWhereNot adds OR NOT whereBasic statement', () => {
-    const builder = new Builder(jest.fn(), 'query')
+    const builder = new Builder(new ModelStub(), 'query')
     builder.orWhereNot('foo', '=', 'bar')
     expect(builder._statements).toContainEqual({
       grouping: 'where',
@@ -94,13 +125,13 @@ describe('Builder', () => {
   })
 
   it('take changes limit', () => {
-    const builder = new Builder(jest.fn(), 'query')
+    const builder = new Builder(new ModelStub(), 'query')
     builder.take(10)
     expect(builder.limit).toEqual(10)
   })
 
   it('orderBy adds orderByBasic statement', () => {
-    const builder = new Builder(jest.fn(), 'query')
+    const builder = new Builder(new ModelStub(), 'query')
     builder.orderBy('foo', 'asc')
 
     expect(builder._statements).toContainEqual({
@@ -112,7 +143,7 @@ describe('Builder', () => {
   })
 
   it('aggregate adds aggregateBasic statement', () => {
-    const builder = new Builder(jest.fn(), 'query')
+    const builder = new Builder(new ModelStub(), 'query')
     builder.aggregate('sum', 'foo')
 
     expect(builder._statements).toContainEqual({
@@ -127,7 +158,7 @@ describe('Builder', () => {
     const engineMock = jest.fn()
     engineMock.search = jest.fn(() => 'foo')
 
-    const modelMock = jest.fn()
+    const modelMock = new ModelStub()
     modelMock.searchableUsing = jest.fn(() => engineMock)
 
     const builder = new Builder(modelMock, 'query')
@@ -140,7 +171,7 @@ describe('Builder', () => {
     const engineMock = jest.fn()
     engineMock.keys = jest.fn(() => 'foo')
 
-    const modelMock = jest.fn()
+    const modelMock = new ModelStub()
     modelMock.searchableUsing = jest.fn(() => engineMock)
 
     const builder = new Builder(modelMock, 'query')
@@ -153,7 +184,7 @@ describe('Builder', () => {
     const engineMock = jest.fn()
     engineMock.get = jest.fn(() => 'foo')
 
-    const modelMock = jest.fn()
+    const modelMock = new ModelStub()
     modelMock.searchableUsing = jest.fn(() => engineMock)
 
     const builder = new Builder(modelMock, 'query')
@@ -163,7 +194,7 @@ describe('Builder', () => {
   })
 
   it('paginate correctly returns LengthPaginator with expected state', async () => {
-    const modelMock = jest.fn()
+    const modelMock = new ModelStub()
     modelMock.searchableUsing = jest.fn(() => engineMock)
 
     const results = new VanillaSerializer([ modelMock ])
@@ -188,7 +219,7 @@ describe('Builder', () => {
   })
 
   it('paginateAfter correctly returns CursorPaginator without cursor', async () => {
-    const modelMock = jest.fn()
+    const modelMock = new ModelStub()
     modelMock.searchableUsing = jest.fn(() => engineMock)
     modelMock.constructor.getSearchableKeyName = jest.fn(() => 'id')
 
@@ -218,9 +249,15 @@ describe('Builder', () => {
   })
 
   it('engine is grabbed from model', () => {
-    const modelMock = jest.fn()
+    const modelMock = new ModelStub()
     modelMock.searchableUsing = jest.fn(() => 'foo')
     const builder = new Builder(modelMock, 'query')
     expect(builder.engine()).toEqual('foo')
   })
 })
+
+class ModelStub {
+  static get $globalSearchableScopes () {
+    return new GlobalSearchableScopes()
+  }
+}

@@ -9,7 +9,7 @@ class TestModel extends Model {
   }
 
   static get table () {
-    return 'stubs'
+    return 'posts'
   }
 
   static castDates (field, value) {
