@@ -189,4 +189,31 @@ describe('search', () => {
       }
     })
   })
+
+  it('documents are filtered by the global searchable scope', async () => {
+    const TestModel = require('../unit/fixtures/TestModel')
+    TestModel._bootIfNotBooted()
+
+    TestModel.addGlobalSearchableScope(builder => {
+      builder.where('status', '!=', 'published')
+    })
+
+    await TestModel.createMany([
+      { title: 'this is the one', status: 'published' },
+      { title: 'just a draft', status: 'published' },
+      { title: 'older than gramma', status: 'archived' }
+    ])
+
+    await sleep(150)
+
+    const results = await TestModel.search().get()
+
+    expect(results.toJSON()).toMatchObject([
+      {
+        id: 3,
+        title: 'older than gramma',
+        status: 'archived'
+      }
+    ])
+  })
 })

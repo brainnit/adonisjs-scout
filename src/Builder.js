@@ -10,9 +10,6 @@ const { filter } = require('lodash')
 
 /**
  * @typedef {import('@adonisjs/lucid/src/Lucid/Model')} Model
- */
-
-/**
  * @typedef {import('./Drivers/Abstract')} EngineDriver
  */
 
@@ -45,10 +42,29 @@ class Builder extends Macroable {
     this._statements = []
 
     /**
-     * Internal flags used by the builder.
+     * Internal flags used by the builder to create `where` statements.
      */
     this._boolFlag = 'and'
     this._notFlag = false
+
+    /**
+     * Reference to the global scopes iterator. A fresh instance
+     * needs to be used for each query
+     */
+    this._scopesIterator = this.model.constructor.$globalSearchableScopes.iterator()
+  }
+
+  /**
+   * This method will apply all the global searchable query scopes
+   * to the builder.
+   *
+   * @method _applyScopes
+   *
+   * @private
+   */
+  _applyScopes () {
+    this._scopesIterator.execute(this)
+    return this
   }
 
   /**
@@ -351,6 +367,7 @@ class Builder extends Macroable {
    * @return {*}
    */
   raw () {
+    this._applyScopes()
     return this.engine().search(this)
   }
 
@@ -360,6 +377,7 @@ class Builder extends Macroable {
    * @return {Collection}
    */
   keys () {
+    this._applyScopes()
     return this.engine().keys(this)
   }
 
@@ -369,6 +387,7 @@ class Builder extends Macroable {
    * @return {Collection}
    */
   get () {
+    this._applyScopes()
     return this.engine().get(this)
   }
 
@@ -410,10 +429,19 @@ class Builder extends Macroable {
      */
     if (Number.isInteger(page) === false || Number.isInteger(limit) === false) {
       throw CE.InvalidArgumentException.invalidParameter(
-        `Both page and limit must an integer`
+        `Both page and limit must be an integer`
       )
     }
 
+    /**
+     * Apply all the scopes before fetching data
+     */
+    this._applyScopes()
+
+    /**
+     * Clear any previously set limit to not conflict with the pagination
+     * and get the engine to run the query throught
+     */
     this.take(null)
     const engine = this.engine()
 
@@ -445,6 +473,15 @@ class Builder extends Macroable {
       )
     }
 
+    /**
+     * Apply all the scopes before fetching data
+     */
+    this._applyScopes()
+
+    /**
+     * Clear any previously set limit to not conflict with the pagination
+     * and get the engine to run the query throught
+     */
     this.take(null)
     const engine = this.engine()
 

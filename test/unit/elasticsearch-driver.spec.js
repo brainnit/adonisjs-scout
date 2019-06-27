@@ -4,14 +4,16 @@ require('dotenv').load()
 require('@adonisjs/lucid/lib/iocResolver').setFold(require('@adonisjs/fold'))
 const { ioc } = require('@adonisjs/fold')
 const { setupResolver } = require('@adonisjs/sink')
-const AbstractDriver = require('../../src/Drivers/Abstract')
-const ElasticsearchDriver = require('../../src/Drivers').elasticsearch
-const VanillaSerializer = require('@adonisjs/lucid/src/Lucid/Serializers/Vanilla')
-const Model = require('@adonisjs/lucid/src/Lucid/Model')
-const Builder = require('../../src/Builder')
-const SearchRule = require('../../src/SearchRule')
 const nock = require('nock')
 const bodybuilder = require('bodybuilder')
+const VanillaSerializer = require('@adonisjs/lucid/src/Lucid/Serializers/Vanilla')
+
+const AbstractDriver = require('../../src/Drivers/Abstract')
+const ElasticsearchDriver = require('../../src/Drivers').elasticsearch
+const Model = require('@adonisjs/lucid/src/Lucid/Model')
+const Builder = require('../../src/Builder')
+const GlobalSearchableScopes = require('../../src/GlobalSearchableScopes')
+const SearchRule = require('../../src/SearchRule')
 
 beforeAll(() => {
   ioc.bind('Adonis/Src/Model', () => Model)
@@ -103,7 +105,7 @@ describe('ElasticsearchDriver', () => {
     const elasticsearch = new ElasticsearchDriver()
     elasticsearch.queryBuilder = bodybuilder()
 
-    const builder = new Builder(jest.fn(), 'sonho grande')
+    const builder = new Builder(new ModelStub(), 'sonho grande')
     builder.where('product', '=', 'book')
     builder.orderBy('price', 'desc')
     builder.aggregate('max', 'price')
@@ -147,7 +149,7 @@ describe('ElasticsearchDriver', () => {
     const elasticsearch = new ElasticsearchDriver()
     elasticsearch.queryBuilder = bodybuilder()
 
-    const modelMock = jest.fn()
+    const modelMock = new ModelStub()
     modelMock.constructor.searchableRules = jest.fn(() => ['SearchRuleStub'])
 
     const builder = new Builder(modelMock, 'foobar')
@@ -172,7 +174,7 @@ describe('ElasticsearchDriver', () => {
     const elasticsearch = new ElasticsearchDriver()
     elasticsearch.queryBuilder = bodybuilder()
 
-    const builder = new Builder(jest.fn())
+    const builder = new Builder(new ModelStub())
     const query = elasticsearch._buildQueryDSL(builder)
 
     expect(query).toEqual({})
@@ -182,7 +184,7 @@ describe('ElasticsearchDriver', () => {
     const elasticsearch = new ElasticsearchDriver()
     elasticsearch.queryBuilder = bodybuilder()
 
-    const builder = new Builder(jest.fn())
+    const builder = new Builder(new ModelStub())
     builder.orderBy('foo')
 
     const query = elasticsearch._buildQueryDSL(builder, {
@@ -207,7 +209,7 @@ describe('ElasticsearchDriver', () => {
     const elasticsearch = new ElasticsearchDriver()
     elasticsearch.queryBuilder = bodybuilder()
 
-    const builder = new Builder(jest.fn())
+    const builder = new Builder(new ModelStub())
     builder.orderBy('foo')
 
     const query = elasticsearch._buildQueryDSL(builder, {
@@ -280,7 +282,7 @@ describe('ElasticsearchDriver', () => {
       return resolve(collection)
     })
 
-    const modelMock = jest.fn()
+    const modelMock = new ModelStub()
     modelMock.getSearchableKey = jest.fn(() => 'yGKT6GgBcXAjfRQqBFTQ')
     modelMock.getScoutModelsByIds = jest.fn(() => promiseMock)
 
@@ -735,7 +737,7 @@ describe('ElasticsearchTransport', () => {
     const elasticsearch = new ElasticsearchDriver()
     elasticsearch.queryBuilder = bodybuilder()
 
-    const builder = new Builder(jest.fn())
+    const builder = new Builder(new ModelStub())
     builder.where('type', '=', 'physical')
     builder.orWhere(function () {
       this.where('type', '=', 'download')
@@ -840,7 +842,7 @@ describe('ElasticsearchTransport', () => {
   })
 
   it('_whereWrapped correctly composes function query', () => {
-    const builder = new Builder(jest.fn())
+    const builder = new Builder(new ModelStub())
     const elasticsearch = new ElasticsearchDriver()
 
     builder.where(function () {
@@ -867,7 +869,7 @@ describe('ElasticsearchTransport', () => {
 })
 
 it('_order correctly composes partial DSL', () => {
-  const builder = new Builder(jest.fn())
+  const builder = new Builder(new ModelStub())
   const elasticsearch = new ElasticsearchDriver()
   elasticsearch.queryBuilder = bodybuilder()
 
@@ -885,7 +887,7 @@ it('_order correctly composes partial DSL', () => {
 })
 
 it('_orderByBasic correctly composes partial query DSL', () => {
-  const builder = new Builder(jest.fn())
+  const builder = new Builder(new ModelStub())
   const elasticsearch = new ElasticsearchDriver()
   elasticsearch.queryBuilder = bodybuilder()
 
@@ -901,7 +903,7 @@ it('_orderByBasic correctly composes partial query DSL', () => {
 })
 
 it('_aggregate correctly composes partial query DSL', () => {
-  const builder = new Builder(jest.fn())
+  const builder = new Builder(new ModelStub())
   const elasticsearch = new ElasticsearchDriver()
   elasticsearch.queryBuilder = bodybuilder()
 
@@ -927,7 +929,7 @@ it('_aggregate correctly composes partial query DSL', () => {
 })
 
 it('_aggregateBasic correctly composes partial query DSL', () => {
-  const builder = new Builder(jest.fn())
+  const builder = new Builder(new ModelStub())
   const elasticsearch = new ElasticsearchDriver()
   elasticsearch.queryBuilder = bodybuilder()
 
@@ -960,16 +962,8 @@ class SearchRuleStub extends SearchRule {
   }
 }
 
-class OtherSearchRuleStub extends SearchRule {
-  buildQuery () {
-    return {
-      bool: {
-        must: {
-          match: {
-            foo: this.builder.query
-          }
-        }
-      }
-    }
+class ModelStub {
+  static get $globalSearchableScopes () {
+    return new GlobalSearchableScopes()
   }
 }

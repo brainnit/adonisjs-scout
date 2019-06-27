@@ -3,6 +3,7 @@
 const { ioc } = require('@adonisjs/fold')
 const ModelHook = require('./ModelHook')
 const Builder = require('./Builder')
+const GlobalSearchableScopes = require('./GlobalSearchableScopes')
 
 /**
  * @typedef {import('@adonisjs/lucid/src/Lucid/Model')} Model
@@ -227,6 +228,22 @@ class Searchable {
     }
 
     /**
+     * Adds a global scope to the model global scopes list.
+     *
+     * You can also given ame to the scope, since named scopes
+     * can be removed when executing queries.
+     *
+     * @method addGlobalSearchableScope
+     *
+     * @param {Function} callback
+     * @param {String} [name = null]
+     */
+    Model.addGlobalSearchableScope = function (callback, name) {
+      this.$globalSearchableScopes.add(callback, name)
+      return this
+    }
+
+    /**
      * Get the index name for the model.
      *
      * @override
@@ -408,6 +425,12 @@ class Searchable {
     Model.resolveSerializer = function () {
       return (Searchable.resolveSerializer.bind(this))()
     }
+
+    /**
+     * List of global searchable query scopes. Chained before executing
+     * query builder queries.
+     */
+    Model.$globalSearchableScopes = new GlobalSearchableScopes()
   }
 
   /**
