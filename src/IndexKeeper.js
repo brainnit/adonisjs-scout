@@ -8,6 +8,7 @@ const proxyMethods = [
 class IndexKeeper {
   constructor (Scout) {
     this.engine = Scout.engine(this.constructor.driver)
+    this.prefix = Scout.Config.prefix
   }
 
   /**
@@ -52,8 +53,8 @@ class IndexKeeper {
 }
 
 proxyMethods.forEach(method => {
-  IndexKeeper.prototype[method] = function (...params) {
-    return this.engine[method](...params)
+  IndexKeeper.prototype[method] = function (index, ...params) {
+    return this.engine[method](`${this.prefix}${index}`, ...params)
   }
 })
 

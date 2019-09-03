@@ -7,6 +7,7 @@ describe('IndexKeeper', () => {
     const engineMock = jest.fn()
 
     const scoutMock = jest.fn()
+    scoutMock.Config = { prefix: 'foo_' }
     scoutMock.engine = jest.fn(() => engineMock)
 
     const keeper = new TestIndexKeeper(scoutMock)
@@ -17,6 +18,7 @@ describe('IndexKeeper', () => {
 
   it('up/down should be defined methods', () => {
     const scoutMock = jest.fn()
+    scoutMock.Config = { prefix: 'foo_' }
     scoutMock.engine = jest.fn()
 
     const keeper = new TestIndexKeeper(scoutMock)
@@ -31,14 +33,15 @@ describe('IndexKeeper', () => {
     engineMock.deleteIndex = jest.fn()
 
     const scoutMock = jest.fn()
+    scoutMock.Config = { prefix: 'foo_' }
     scoutMock.engine = jest.fn(() => engineMock)
 
     const keeper = new TestIndexKeeper(scoutMock)
 
-    keeper.createIndex('foo')
-    expect(engineMock.createIndex).toHaveBeenCalledWith('foo')
+    keeper.createIndex('bar')
+    expect(engineMock.createIndex).toHaveBeenCalledWith('foo_bar')
 
-    keeper.deleteIndex('foo')
-    expect(engineMock.deleteIndex).toHaveBeenCalledWith('foo')
+    keeper.deleteIndex('bar')
+    expect(engineMock.deleteIndex).toHaveBeenCalledWith('foo_bar')
   })
 })
