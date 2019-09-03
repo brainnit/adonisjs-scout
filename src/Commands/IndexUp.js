@@ -6,7 +6,7 @@ const prettyHrTime = require('pretty-hrtime')
 const { size, keys } = require('lodash')
 const BaseIndex = require('./BaseIndex')
 
-class IndexCreate extends BaseIndex {
+class IndexUp extends BaseIndex {
   /**
    * IoC container injections
    *
@@ -27,7 +27,7 @@ class IndexCreate extends BaseIndex {
    */
   static get signature () {
     return `
-    scout:indexCreate
+    scout:up
     { -i, --importAll: Import all models to index after creating it }
     { --files=@value: Run only selected files }
     `
@@ -41,7 +41,7 @@ class IndexCreate extends BaseIndex {
    * @return {String}
    */
   static get description () {
-    return 'Create specific Scout engine index.'
+    return 'Create all/specific Scout engine indexes.'
   }
 
   /**
@@ -83,7 +83,7 @@ class IndexCreate extends BaseIndex {
       }
 
       const endTime = process.hrtime(startTime)
-      this.success(`Executed in ${prettyHrTime(endTime)}`)
+      this.success(`Scout indexes created in ${prettyHrTime(endTime)}`)
     } catch (error) {
       console.log(error)
       process.exit(1)
@@ -91,4 +91,4 @@ class IndexCreate extends BaseIndex {
   }
 }
 
-module.exports = IndexCreate
+module.exports = IndexUp
