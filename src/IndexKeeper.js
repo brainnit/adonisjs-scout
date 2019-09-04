@@ -36,7 +36,7 @@ class IndexKeeper {
   /**
    * This method will be called to create the index.
    *
-   * @return {void}
+   * @return {Promise}
    */
   up () {
     // ...
@@ -45,7 +45,7 @@ class IndexKeeper {
   /**
    * This method will be called to drop the index.
    *
-   * @return {void}
+   * @return {Promise}
    */
   down () {
     // ...

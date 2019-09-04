@@ -51,6 +51,15 @@ class User extends Model {
 module.exports = Users
 ```
 
+Afterwards, create your first IndexKeeper and run the following commands to create/delete indexes on your application:
+
+```sh
+# if you want to create your indexes
+adonis scout:up
+# or this if you want to drop indexes
+adonis scout:down
+```
+
 ## Search Rules
 
 A search rule is a class that describes how a search query will be executed and allow you to build complex and reusable searches with the support of the [`Builder`](/src/Builder.js) instance.
