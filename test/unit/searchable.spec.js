@@ -79,12 +79,6 @@ describe('Searchable', () => {
     expect(model.searchableAs()).toBe('posts')
   })
 
-  it('searchableAs returns model table', () => {
-    const model = new ModelStub()
-    ModelStub._bootIfNotBooted()
-    expect(model.searchableAs()).toBe('posts')
-  })
-
   it('searchableAs returns prefixed model table', () => {
     const model = new ModelStub()
     ModelStub._bootIfNotBooted()
