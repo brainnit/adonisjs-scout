@@ -6,7 +6,7 @@ const path = require('path')
 const { ioc, registrar } = require('@adonisjs/fold')
 const { Config, setupResolver, Helpers } = require('@adonisjs/sink')
 
-const IndexCreate = require('../../src/Commands/IndexCreate')
+const IndexUp = require('../../src/Commands/IndexUp')
 
 beforeAll(async () => {
   ioc.singleton('Adonis/Src/Config', function () {
@@ -45,20 +45,20 @@ afterAll(async () => {
   }
 }, 0)
 
-describe('Index Create', () => {
+describe('ace scout:down command', () => {
   it('skip when no IndexKeeper class is given', async () => {
-    ace.addCommand(IndexCreate)
-    const result = await ace.call('scout:indexCreate')
+    ace.addCommand(IndexUp)
+    const result = await ace.call('scout:down')
     expect(result).toEqual('Nothing to do')
   })
 
   it('run index keepers in sequence', async () => {
-    ace.addCommand(IndexCreate)
+    ace.addCommand(IndexUp)
     global.stack = []
 
     await fs.outputFile(path.join(__dirname, 'app/Models/IndexKeepers/bar.js'), `
       class IndexKeeper {
-        up () {
+        down () {
           return new Promise((resolve) => {
             setTimeout(() => {
               (global).stack.push('bar')
@@ -72,24 +72,24 @@ describe('Index Create', () => {
 
     await fs.outputFile(path.join(__dirname, 'app/Models/IndexKeepers/baz.js'), `
       class IndexKeeper {
-        up () {
+        down () {
           (global).stack.push('baz')
         }
       }
       module.exports = IndexKeeper
     `)
 
-    await ace.call('scout:indexCreate')
+    await ace.call('scout:down')
     expect(global.stack).toEqual(['bar', 'baz'])
   })
 
   it('run only selected files', async () => {
-    ace.addCommand(IndexCreate)
+    ace.addCommand(IndexUp)
     global.stack = []
 
     await fs.outputFile(path.join(__dirname, 'app/Models/IndexKeepers/foo.js'), `
       class IndexKeeper {
-        up () {
+        down () {
           return new Promise((resolve) => {
             setTimeout(() => {
               (global).stack.push('foo')
@@ -103,14 +103,14 @@ describe('Index Create', () => {
 
     await fs.outputFile(path.join(__dirname, 'app/Models/IndexKeepers/bar.js'), `
       class IndexKeeper {
-        up () {
+        down () {
           (global).stack.push('bar')
         }
       }
       module.exports = IndexKeeper
     `)
 
-    await ace.call('scout:indexCreate', {}, { files: 'foo.js' })
+    await ace.call('scout:down', {}, { files: 'foo.js' })
     expect(global.stack).toContainEqual('foo')
   })
 })
