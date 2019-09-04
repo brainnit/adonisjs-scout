@@ -8,7 +8,7 @@ const proxyMethods = [
 class IndexKeeper {
   constructor (Scout) {
     this.engine = Scout.engine(this.constructor.driver)
-    this.prefix = Scout.Config.prefix
+    this.prefix = Scout.Config.get('scout.prefix')
   }
 
   /**

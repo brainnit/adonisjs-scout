@@ -1,13 +1,17 @@
 'use strict'
 
+const sinon = require('sinon')
 const TestIndexKeeper = require('./fixtures/TestIndexKeeper')
 
 describe('IndexKeeper', () => {
   it('gets the desired engine driver', () => {
-    const engineMock = jest.fn()
+    const stub = sinon.stub()
+    stub.withArgs('scout.prefix').returns('foo_')
+    const configMock = { get: stub }
 
+    const engineMock = jest.fn()
     const scoutMock = jest.fn()
-    scoutMock.Config = { prefix: 'foo_' }
+    scoutMock.Config = configMock
     scoutMock.engine = jest.fn(() => engineMock)
 
     const keeper = new TestIndexKeeper(scoutMock)
@@ -17,8 +21,12 @@ describe('IndexKeeper', () => {
   })
 
   it('up/down should be defined methods', () => {
+    const stub = sinon.stub()
+    stub.withArgs('scout.prefix').returns('foo_')
+    const configMock = { get: stub }
+
     const scoutMock = jest.fn()
-    scoutMock.Config = { prefix: 'foo_' }
+    scoutMock.Config = configMock
     scoutMock.engine = jest.fn()
 
     const keeper = new TestIndexKeeper(scoutMock)
@@ -28,12 +36,16 @@ describe('IndexKeeper', () => {
   })
 
   it('proxy engine methods', () => {
+    const stub = sinon.stub()
+    stub.withArgs('scout.prefix').returns('foo_')
+    const configMock = { get: stub }
+
     const engineMock = jest.fn()
     engineMock.createIndex = jest.fn()
     engineMock.deleteIndex = jest.fn()
 
     const scoutMock = jest.fn()
-    scoutMock.Config = { prefix: 'foo_' }
+    scoutMock.Config = configMock
     scoutMock.engine = jest.fn(() => engineMock)
 
     const keeper = new TestIndexKeeper(scoutMock)
